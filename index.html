@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI-Driven Firewall Dashboard</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    background: #0b1220;
+    color: #e6edf3;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: #0f172a;
+    padding: 20px;
+    box-sizing: border-box;
+    transition: 0.3s;
+}
+
+.sidebar.closed {
+    width: 70px;
+}
+
+.sidebar h2 {
+    color: #22d3ee;
+}
+
+.sidebar a {
+    display: block;
+    color: #94a3b8;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.sidebar a:hover {
+    background: #1e293b;
+    border-radius: 6px;
+}
+
+/* MAIN */
+.main {
+    margin-left: 240px;
+    padding: 20px;
+    transition: 0.3s;
+}
+
+.main.full {
+    margin-left: 90px;
+}
+
+/* CARD */
+.card {
+    background: #111827;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+/* TABLE */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td, th {
+    padding: 10px;
+    border-bottom: 1px solid #1f2937;
+}
+
+/* STATUS */
+.ATTACK { color: red; }
+.SUSPICIOUS { color: orange; }
+.NORMAL { color: lightgreen; }
+
+/* BUTTONS */
+.btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    margin-right: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.start {
+    background: #22c55e;
+    color: black;
+}
+
+.stop {
+    background: #ef4444;
+    color: white;
+}
+
+/* COLLAPSE TEXT */
+.sidebar.closed span {
+    display: none;
+}
+
+/* PAGES */
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+
+    <div onclick="toggleSidebar()" style="cursor:pointer; margin-bottom:20px;">
+        ☰
+    </div>
+
+    <h2>🛡 <span>SHIELD_OS</span></h2>
+
+    <a onclick="showPage('dashboard')">📊 <span>Dashboard</span></a>
+    <a onclick="showPage('traffic')">📡 <span>Traffic Analysis</span></a>
+    <a onclick="showPage('incidents')">🚨 <span>Incidents</span></a>
+
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main">
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="page">
+        <h2>📊 AI-Driven Firewall Dashboard</h2>
+
+        <div class="card">
+            <h3>System Overview</h3>
+            <p>Total Events: <span id="total">0</span></p>
+            <p>Attacks: <span id="attacks">0</span></p>
+        </div>
+
+        <div class="card">
+            <h3>System Control</h3>
+
+            <button onclick="startScan()" class="btn start">▶ Start Scan</button>
+            <button onclick="stopScan()" class="btn stop">⏹ Stop Scan</button>
+
+            <p>Status: <span id="status" style="color:lightgreen;">Running</span></p>
+        </div>
+    </div>
+
+    <!-- TRAFFIC -->
+    <div id="traffic" class="page hidden">
+        <h2>📡 Traffic Analysis (LIVE)</h2>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>IP</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- INCIDENTS -->
+    <div id="incidents" class="page hidden">
+        <h2>🚨 Incidents</h2>
+        <div class="card">Coming soon...</div>
+    </div>
+
+</div>
+
+<script>
+
+// SIDEBAR TOGGLE
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("closed");
+    document.getElementById("main").classList.toggle("full");
+}
+
+// PAGE SWITCH
+function showPage(page) {
+    document.querySelectorAll(".page").forEach(p => {
+        p.classList.add("hidden");
+    });
+    document.getElementById(page).classList.remove("hidden");
+}
+
+// SCAN CONTROL
+let scanning = true;
+
+function startScan() {
+    scanning = true;
+    document.getElementById("status").innerText = "Running";
+    document.getElementById("status").style.color = "lightgreen";
+}
+
+function stopScan() {
+    scanning = false;
+    document.getElementById("status").innerText = "Stopped";
+    document.getElementById("status").style.color = "red";
+}
+
+// LOAD DATA
+async function loadData() {
+    if (!scanning) return;
+
+    try {
+        const res = await fetch("/data");
+        const data = await res.json();
+
+        let html = "";
+        let attackCount = 0;
+
+        data.reverse().forEach(d => {
+            if (d.status === "ATTACK") attackCount++;
+
+            html += `
+            <tr>
+                <td>${d.time}</td>
+                <td>${d.ip}</td>
+                <td class="${d.status}">${d.status}</td>
+                <td>${d.final.toFixed(3)}</td>
+            </tr>`;
+        });
+
+        document.getElementById("table").innerHTML = html;
+        document.getElementById("total").innerText = data.length;
+        document.getElementById("attacks").innerText = attackCount;
+
+    } catch (err) {
+        console.log("No API yet");
+    }
+}
+
+setInterval(loadData, 1000);
+
+</script>
+
+</body>
+</html>
