@@ -1,15 +1,12 @@
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
 import json
-import pandas as pd
 import numpy as np
 import time
 import os
 import threading
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+import random
 
-# =========================
-# INIT
-# =========================
 app = FastAPI()
 
 print("🚀 Starting AI Firewall System...")
@@ -18,17 +15,21 @@ print("🚀 Starting AI Firewall System...")
 # SETTINGS
 # =========================
 LOG_FILE = "/var/log/suricata/eve.json"
-SEQUENCE_LENGTH = 10
 
-sequence_buffer = []
+data_store = []
 attack_counter = {}
 blocked_ips = set()
-data_store = []
+
+# Detect if running in Railway (no log file)
+USE_FAKE = not os.path.exists(LOG_FILE)
 
 # =========================
-# BLOCK IP
+# BLOCK IP (LOCAL ONLY)
 # =========================
 def block_ip(ip):
+    if USE_FAKE:
+        return  # skip in cloud
+
     if ip in blocked_ips:
         return
 
@@ -50,14 +51,10 @@ def process_line(line):
 
     src_ip = log.get("src_ip", "unknown")
 
-    # Skip IPv6
     if ":" in src_ip:
         return
 
-    # =========================
-    # FAKE AI PREDICTION (TEMP)
-    # =========================
-    # Random score simulation
+    # Fake AI score
     final_score = np.random.random()
 
     if final_score > 0.7:
@@ -69,9 +66,6 @@ def process_line(line):
 
     print(f"🌐 {src_ip} | {status} | {final_score:.3f}")
 
-    # =========================
-    # STORE DATA
-    # =========================
     record = {
         "ip": src_ip,
         "final": float(final_score),
@@ -84,17 +78,13 @@ def process_line(line):
     if len(data_store) > 1000:
         data_store.pop(0)
 
-    # =========================
-    # AUTO BLOCK
-    # =========================
     if status == "ATTACK":
         attack_counter[src_ip] = attack_counter.get(src_ip, 0) + 1
-
         if attack_counter[src_ip] >= 3:
             block_ip(src_ip)
 
 # =========================
-# MONITOR LOG FILE
+# REAL MONITOR (LOCAL)
 # =========================
 def monitor():
     print("📂 Reading logs...")
@@ -127,19 +117,48 @@ def monitor():
             process_line(line)
 
 # =========================
-# START FIREWALL THREAD
+# FAKE DATA (CLOUD MODE)
+# =========================
+def fake_generator():
+    print("⚡ Running in CLOUD mode (fake data)...")
+
+    while True:
+        status = random.choices(
+            ["NORMAL", "SUSPICIOUS", "ATTACK"],
+            weights=[0.7, 0.2, 0.1]
+        )[0]
+
+        record = {
+            "ip": f"192.168.1.{random.randint(1,255)}",
+            "final": round(random.uniform(0.1, 1.0), 3),
+            "status": status,
+            "time": time.strftime("%H:%M:%S")
+        }
+
+        data_store.append(record)
+
+        if len(data_store) > 1000:
+            data_store.pop(0)
+
+        time.sleep(2)
+
+# =========================
+# START SYSTEM
 # =========================
 @app.on_event("startup")
 def startup():
-    threading.Thread(target=monitor, daemon=True).start()
+    if USE_FAKE:
+        threading.Thread(target=fake_generator, daemon=True).start()
+    else:
+        threading.Thread(target=monitor, daemon=True).start()
 
 # =========================
 # API ROUTES
 # =========================
-@app.get("/data")
-def get_data():
-    return data_store[-100:]
-
 @app.get("/")
 def dashboard():
     return FileResponse("index.html")
+
+@app.get("/data")
+def get_data():
+    return data_store[-100:]
