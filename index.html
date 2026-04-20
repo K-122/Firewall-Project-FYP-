@@ -17,11 +17,8 @@ body {
     width: 220px;
     height: 100vh;
     position: fixed;
-    left: 0;
-    top: 0;
     background: #0f172a;
     padding: 20px;
-    box-sizing: border-box;
     transition: 0.3s;
 }
 
@@ -45,6 +42,10 @@ body {
     border-radius: 6px;
 }
 
+.sidebar.closed span {
+    display: none;
+}
+
 /* MAIN */
 .main {
     margin-left: 240px;
@@ -64,6 +65,19 @@ body {
     margin-bottom: 20px;
 }
 
+/* BUTTONS */
+.btn {
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.start { background: #22c55e; color: black; }
+.stop { background: #ef4444; color: white; }
+
 /* TABLE */
 table {
     width: 100%;
@@ -75,37 +89,18 @@ td, th {
     border-bottom: 1px solid #1f2937;
 }
 
-/* STATUS */
+/* STATUS COLORS */
 .ATTACK { color: red; }
 .SUSPICIOUS { color: orange; }
 .NORMAL { color: lightgreen; }
 
-/* BUTTONS */
-.btn {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 6px;
-    margin-right: 10px;
-    cursor: pointer;
-    font-weight: bold;
+/* LOG BOX */
+#logs {
+    color: #22c55e;
+    font-family: monospace;
 }
 
-.start {
-    background: #22c55e;
-    color: black;
-}
-
-.stop {
-    background: #ef4444;
-    color: white;
-}
-
-/* COLLAPSE TEXT */
-.sidebar.closed span {
-    display: none;
-}
-
-/* PAGES */
+/* PAGE SWITCH */
 .hidden {
     display: none;
 }
@@ -116,17 +111,13 @@ td, th {
 
 <!-- SIDEBAR -->
 <div class="sidebar" id="sidebar">
+    <div onclick="toggleSidebar()" style="cursor:pointer; margin-bottom:20px;">☰</div>
 
-    <div onclick="toggleSidebar()" style="cursor:pointer; margin-bottom:20px;">
-        ☰
-    </div>
-
-    <h2>🛡 <span>SHIELD_OS</span></h2>
+    <h2>🦈 <span>SHARRK_OS</span></h2>
 
     <a onclick="showPage('dashboard')">📊 <span>Dashboard</span></a>
     <a onclick="showPage('traffic')">📡 <span>Traffic Analysis</span></a>
     <a onclick="showPage('incidents')">🚨 <span>Incidents</span></a>
-
 </div>
 
 <!-- MAIN -->
@@ -149,6 +140,23 @@ td, th {
             <button onclick="stopScan()" class="btn stop">⏹ Stop Scan</button>
 
             <p>Status: <span id="status" style="color:lightgreen;">Running</span></p>
+        </div>
+
+        <!-- SCAN PANEL -->
+        <div class="card" id="scanPanel" style="display:none;">
+            <h3>🔍 Scan Activity</h3>
+
+            <p>Elapsed Time: <span id="elapsed">0s</span></p>
+            <p>Estimated Remaining: <span id="remaining">--</span></p>
+
+            <div id="logs" style="
+                background:#020617;
+                padding:10px;
+                height:150px;
+                overflow:auto;
+                font-size:12px;
+                border-radius:6px;
+            "></div>
         </div>
     </div>
 
@@ -189,31 +197,73 @@ function toggleSidebar() {
 
 // PAGE SWITCH
 function showPage(page) {
-    document.querySelectorAll(".page").forEach(p => {
-        p.classList.add("hidden");
-    });
+    document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
     document.getElementById(page).classList.remove("hidden");
 }
 
-// SCAN CONTROL
-let scanning = true;
+// SCAN SYSTEM
+let scanning = false;
+let timer = 0;
+let interval;
 
 function startScan() {
     scanning = true;
+    timer = 0;
+
     document.getElementById("status").innerText = "Running";
     document.getElementById("status").style.color = "lightgreen";
+
+    document.getElementById("scanPanel").style.display = "block";
+    document.getElementById("logs").innerHTML = "";
+
+    interval = setInterval(() => {
+        timer++;
+
+        document.getElementById("elapsed").innerText = timer + "s";
+        let remaining = Math.max(10 - timer, 0);
+        document.getElementById("remaining").innerText = remaining + "s";
+
+        addLog();
+
+        if (timer >= 10) {
+            addLog("✔ Scan Completed");
+            clearInterval(interval);
+        }
+
+    }, 1000);
 }
 
 function stopScan() {
     scanning = false;
+
     document.getElementById("status").innerText = "Stopped";
     document.getElementById("status").style.color = "red";
+
+    clearInterval(interval);
+    addLog("⛔ Scan Stopped");
 }
 
-// LOAD DATA
-async function loadData() {
-    if (!scanning) return;
+// FAKE LOG GENERATOR
+function addLog(custom = null) {
+    const logs = document.getElementById("logs");
 
+    const messages = [
+        "Scanning incoming packets...",
+        "Analyzing traffic pattern...",
+        "Checking anomaly signatures...",
+        "Running AI detection model...",
+        "Inspecting IP behavior...",
+        "Evaluating threat level..."
+    ];
+
+    let msg = custom || messages[Math.floor(Math.random() * messages.length)];
+
+    logs.innerHTML += "➤ " + msg + "<br>";
+    logs.scrollTop = logs.scrollHeight;
+}
+
+// LOAD DATA FROM API
+async function loadData() {
     try {
         const res = await fetch("/data");
         const data = await res.json();
@@ -237,8 +287,8 @@ async function loadData() {
         document.getElementById("total").innerText = data.length;
         document.getElementById("attacks").innerText = attackCount;
 
-    } catch (err) {
-        console.log("No API yet");
+    } catch {
+        console.log("API not ready");
     }
 }
 
