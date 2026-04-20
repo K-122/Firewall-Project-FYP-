@@ -82,17 +82,60 @@ body {
 table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
-td, th {
-    padding: 10px;
+th, td {
+    padding: 12px;
     border-bottom: 1px solid #1f2937;
 }
 
-/* STATUS COLORS */
-.ATTACK { color: red; }
-.SUSPICIOUS { color: orange; }
-.NORMAL { color: lightgreen; }
+th {
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+td {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* margin */
+th:nth-child(1), td:nth-child(1) {
+    text-align: left;
+    width: 25%;
+}
+
+th:nth-child(2), td:nth-child(2) {
+    text-align: left;
+    width: 35%;
+}
+
+th:nth-child(3), td:nth-child(3) {
+    text-align: center;
+    width: 20%;
+}
+
+th:nth-child(4), td:nth-child(4) {
+    text-align: right;
+    width: 20%;
+}
+
+/* color */
+.ATTACK {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+.SUSPICIOUS {
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+.NORMAL {
+    color: #22c55e;
+}
 
 /* LOG BOX */
 #logs {
