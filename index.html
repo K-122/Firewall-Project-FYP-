@@ -123,9 +123,12 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
     <p>Status: <span id="status">Idle</span></p>
 </div>
 <!-- GRAPH -->
-<div class="card" style="flex:1;">
+<div class="card" style="flex:1; max-width:350px;">
     <h3>📊 Live Graph</h3>
-    <canvas id="chart" style="height:250px;"></canvas>
+    <div style="height:120px;">
+        <canvas id="chart"></canvas>
+    </div>
+
 </div>
 
 <!-- ALERT -->
@@ -178,7 +181,7 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
                 <option value="pie">Pie</option>
             </select>
 
-            <button onclick="toggleFullscreen()">🔍</button>
+            <button onclick="toggleFullscreen()">⛶</button>
         </div>
     </div>
 
@@ -268,10 +271,21 @@ async function loadGraph(){
 
     if(chart) chart.destroy();
 
-    chart=new Chart(document.getElementById("chart"),{
-        type:"bar",
-        data:{labels:labels,datasets:[{data:scores}]}
-    });
+   chart = new Chart(document.getElementById("chart"), {
+    type: currentType,
+    data: {
+        labels: labels,
+        datasets: [{
+            label: "Threat",
+            data: scores
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,   
+        animation: false
+    }
+});
 }
 
 // DATA
