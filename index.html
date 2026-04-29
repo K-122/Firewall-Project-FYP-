@@ -29,6 +29,15 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
     margin-bottom:20px;
 }
 
+.card h3 {
+    margin-bottom: 10px;
+    color: #22c55e;
+}
+
+.card p {
+    margin: 5px 0;
+}
+
 /* BUTTON */
 .btn { padding:10px; border:none; border-radius:6px; cursor:pointer; }
 .start { background:#22c55e; }
@@ -63,9 +72,9 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
 <div class="sidebar"id="sidebar">
     <div onclick="toggleSidebar()" style="cursor:pointer; margin-bottom:20px;">☰</div>
 <h2>🦈 SHARRK_OS</h2>
-<a onclick="showPage('Dashboard')">🖥️<span>Dashboard</span></a>
-<a onclick="showPage('Traffic')">📡<span>Traffic Analysis</span></a>
-<a onclick="showPage('Incidents')">🚨<span>Incidents</span></a>
+<a onclick="showPage('dashboard')">🖥️<span>Dashboard</span></a>
+<a onclick="showPage('traffic')">📡<span>Traffic Analysis</span></a>
+<a onclick="showPage('incidents')">🚨<span>Incidents</span></a>
 </div>
 
 <!-- MAIN -->
@@ -78,29 +87,29 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
 
 <h2>AI Firewall Dashboard</h2>
 
-<div class="card">
-IP: <span id="deviceIP">Loading...</span><br>
-Total: <span id="total">0</span><br>
-Attacks: <span id="attacks">0</span>
+<!-- LEFT: IP + STATS -->
+<div class="card" style="flex:1;">
+    <p><b>IP:</b> <span id="deviceIP">Loading...</span></p>
+    <p><b>Total:</b> <span id="total">0</span></p>
+    <p><b>Attacks:</b> <span id="attacks">0</span></p>
 </div>
 
-<div class="card">
-<button onclick="startScan()" class="btn start">Start</button>
-<button onclick="stopScan()" class="btn stop">Stop</button>
-<p>Status: <span id="status">Idle</span></p>
+<!-- RIGHT: CONTROL -->
+<div class="card" style="flex:1;">
+    <button onclick="startScan()" class="btn start">Start</button>
+    <button onclick="stopScan()" class="btn stop">Stop</button>
+    <p>Status: <span id="status">Idle</span></p>
+</div>
+<!-- GRAPH -->
+<div class="card" style="flex:2;">
+    <h3>📊 Live Graph</h3>
+    <canvas id="chart" style="height:250px;"></canvas>
 </div>
 
-<div class="card">
-<p>Elapsed: <span id="elapsed">0</span></p>
-<div id="logs"></div>
-</div>
-
-<div class="card">
-<canvas id="chart"></canvas>
-</div>
-
-<div class="card">
-<div id="alerts"></div>
+<!-- ALERT -->
+<div class="card" style="flex:1;">
+    <h3>🚨 Alerts</h3>
+    <div id="alerts"></div>
 </div>
 
 </div>
