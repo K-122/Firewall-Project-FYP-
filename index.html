@@ -68,6 +68,24 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 /* TABLE */
 table { width:100%; border-collapse:collapse; }
 th, td { padding:12px; border-bottom:1px solid #1f2937; }
+table {
+    table-layout: fixed;   
+}
+th:nth-child(1), td:nth-child(1) { text-align: left; }
+th:nth-child(2), td:nth-child(2) { text-align: left; }
+th:nth-child(3), td:nth-child(3) { text-align: center; }
+th:nth-child(4), td:nth-child(4) { text-align: right; }
+
+th:nth-child(1), td:nth-child(1) { width: 120px; }
+th:nth-child(2), td:nth-child(2) { width: 220px; }
+th:nth-child(3), td:nth-child(3) { width: 140px; }
+th:nth-child(4), td:nth-child(4) { width: 100px; }
+
+td:nth-child(4) {
+    font-family: monospace;
+}
+
+
 
 /* STATUS */
 .ATTACK { color:red; }
@@ -109,19 +127,29 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
 
 <h2>AI Firewall Dashboard</h2>
 
+<!-- ===== TOP ROW ===== -->
+
+<div style="display:flex; gap:20px; align-items:stretch;">
 <!-- LEFT: IP + STATS -->
-<div class="card" style="flex:1;">
+<div class="card" style="flex:2;">
     <p><b>IP:</b> <span id="deviceIP">Loading...</span></p>
     <p><b>Total:</b> <span id="total">0</span></p>
     <p><b>Attacks:</b> <span id="attacks">0</span></p>
 </div>
 
 <!-- RIGHT: CONTROL -->
-<div class="card" style="flex:1;">
-    <button onclick="startScan()" class="btn start">Start</button>
-    <button onclick="stopScan()" class="btn stop">Stop</button>
+<div class="card" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+        <button onclick="startScan()" class="btn start">Start</button>
+        <button onclick="stopScan()" class="btn stop">Stop</button>
+    </div>
+
     <p>Status: <span id="status">Idle</span></p>
+
 </div>
+
+</div>
+
 <!-- GRAPH -->
 <div class="card" style="flex:1; max-width:450px;">
     <h3>📊 Live Graph</h3>
