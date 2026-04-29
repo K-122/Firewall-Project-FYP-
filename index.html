@@ -1,341 +1,243 @@
 <!DOCTYPE html>
+
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI-Driven Firewall Dashboard</title>
+<title>AI Firewall Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-    margin: 0;
-    font-family: "Segoe UI", sans-serif;
-    background: #0b1220;
-    color: #e6edf3;
-}
+body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 
 /* SIDEBAR */
 .sidebar {
-    width: 220px;
-    height: 100vh;
-    position: fixed;
-    background: #0f172a;
-    padding: 20px;
-    transition: 0.3s;
+    width:220px; height:100vh; position:fixed;
+    background:#0f172a; padding:20px;
 }
-
-.sidebar.closed {
-    width: 70px;
-}
-
-.sidebar h2 {
-    color: #22d3ee;
-}
-
-.sidebar a {
-    display: block;
-    color: #94a3b8;
-    padding: 10px;
-    cursor: pointer;
-}
-
-.sidebar a:hover {
-    background: #1e293b;
-    border-radius: 6px;
-}
-
-.sidebar.closed span {
-    display: none;
-}
+.sidebar a { display:block; padding:10px; color:#94a3b8; cursor:pointer; }
+.sidebar a:hover { background:#1e293b; }
 
 /* MAIN */
-.main {
-    margin-left: 240px;
-    padding: 20px;
-    transition: 0.3s;
-}
-
-.main.full {
-    margin-left: 90px;
-}
+.main { margin-left:240px; padding:20px; }
 
 /* CARD */
 .card {
-    background: #111827;
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 20px;
+    background:#111827;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:20px;
 }
 
-/* BUTTONS */
-.btn {
-    padding: 10px 15px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    margin-right: 10px;
-    font-weight: bold;
-}
-
-.start { background: #22c55e; color: black; }
-.stop { background: #ef4444; color: white; }
+/* BUTTON */
+.btn { padding:10px; border:none; border-radius:6px; cursor:pointer; }
+.start { background:#22c55e; }
+.stop { background:#ef4444; color:white; }
 
 /* TABLE */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
+table { width:100%; border-collapse:collapse; }
+th, td { padding:12px; border-bottom:1px solid #1f2937; }
+
+/* STATUS */
+.ATTACK { color:red; }
+.SUSPICIOUS { color:orange; }
+.NORMAL { color:lightgreen; }
+
+/* ALERT */
+.alert {
+    background:#1e293b;
+    padding:10px;
+    margin-bottom:10px;
+    border-left:4px solid red;
 }
 
-th, td {
-    padding: 12px;
-    border-bottom: 1px solid #1f2937;
-}
-
-th {
-    color: #94a3b8;
-    font-weight: 600;
-}
-
-td {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-/* margin */
-th:nth-child(1), td:nth-child(1) {
-    text-align: left;
-    width: 25%;
-}
-
-th:nth-child(2), td:nth-child(2) {
-    text-align: left;
-    width: 35%;
-}
-
-th:nth-child(3), td:nth-child(3) {
-    text-align: center;
-    width: 20%;
-}
-
-th:nth-child(4), td:nth-child(4) {
-    text-align: right;
-    width: 20%;
-}
-
-/* color */
-.ATTACK {
-    color: #ef4444;
-    font-weight: bold;
-}
-
-.SUSPICIOUS {
-    color: #f59e0b;
-    font-weight: bold;
-}
-
-.NORMAL {
-    color: #22c55e;
-}
-
-/* LOG BOX */
-#logs {
-    color: #22c55e;
-    font-family: monospace;
-}
-
-/* PAGE SWITCH */
-.hidden {
-    display: none;
-}
+/* HIDE */
+.hidden { display:none; }
 </style>
+
 </head>
 
 <body>
 
 <!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
-    <div onclick="toggleSidebar()" style="cursor:pointer; margin-bottom:20px;">☰</div>
 
-    <h2>🦈 <span>SHARRK_OS</span></h2>
-
-    <a onclick="showPage('dashboard')">📊 <span>Dashboard</span></a>
-    <a onclick="showPage('traffic')">📡 <span>Traffic Analysis</span></a>
-    <a onclick="showPage('incidents')">🚨 <span>Incidents</span></a>
+<div class="sidebar">
+<h2>🦈 SHARRK_OS</h2>
+<a onclick="showPage('🖥️Dashboard')">Dashboard</a>
+<a onclick="showPage('📡Traffic')">Traffic</a>
+<a onclick="showPage('🚨Incidents')">Incidents</a>
 </div>
 
 <!-- MAIN -->
-<div class="main" id="main">
 
-    <!-- DASHBOARD -->
-    <div id="dashboard" class="page">
-        <h2>📊 AI-Driven Firewall Dashboard</h2>
+<div class="main">
 
-        <div class="card">
-            <h3>System Overview</h3>
-            <p>Total Events: <span id="total">0</span></p>
-            <p>Attacks: <span id="attacks">0</span></p>
-        </div>
+<!-- DASHBOARD -->
 
-        <div class="card">
-            <h3>System Control</h3>
+<div id="dashboard" class="page">
 
-            <button onclick="startScan()" class="btn start">▶ Start Scan</button>
-            <button onclick="stopScan()" class="btn stop">⏹ Stop Scan</button>
+<h2>AI Firewall Dashboard</h2>
 
-            <p>Status: <span id="status" style="color:lightgreen;">Running</span></p>
-        </div>
+<div class="card">
+IP: <span id="deviceIP">Loading...</span><br>
+Total: <span id="total">0</span><br>
+Attacks: <span id="attacks">0</span>
+</div>
 
-        <!-- SCAN PANEL -->
-        <div class="card" id="scanPanel" style="display:none;">
-            <h3>🔍 Scan Activity</h3>
+<div class="card">
+<button onclick="startScan()" class="btn start">Start</button>
+<button onclick="stopScan()" class="btn stop">Stop</button>
+<p>Status: <span id="status">Idle</span></p>
+</div>
 
-            <p>Elapsed Time: <span id="elapsed">0s</span></p>
-            <p>Estimated Remaining: <span id="remaining">--</span></p>
+<div class="card">
+<p>Elapsed: <span id="elapsed">0</span></p>
+<div id="logs"></div>
+</div>
 
-            <div id="logs" style="
-                background:#020617;
-                padding:10px;
-                height:150px;
-                overflow:auto;
-                font-size:12px;
-                border-radius:6px;
-            "></div>
-        </div>
-    </div>
+<div class="card">
+<canvas id="chart"></canvas>
+</div>
 
-    <!-- TRAFFIC -->
-    <div id="traffic" class="page hidden">
-        <h2>📡 Traffic Analysis (LIVE)</h2>
+<div class="card">
+<div id="alerts"></div>
+</div>
 
-        <div class="card">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>IP</th>
-                        <th>Status</th>
-                        <th>Score</th>
-                    </tr>
-                </thead>
-                <tbody id="table"></tbody>
-            </table>
-        </div>
-    </div>
+</div>
 
-    <!-- INCIDENTS -->
-    <div id="incidents" class="page hidden">
-        <h2>🚨 Incidents</h2>
-        <div class="card">Coming soon...</div>
-    </div>
+<!-- TRAFFIC -->
+
+<div id="traffic" class="page hidden">
+<table>
+<tr><th>Time</th><th>IP</th><th>Status</th><th>Score</th></tr>
+<tbody id="table"></tbody>
+</table>
+</div>
+
+<!-- INCIDENTS -->
+
+<div id="incidents" class="page hidden">
+<div id="incidentList"></div>
+</div>
 
 </div>
 
 <script>
 
-// SIDEBAR TOGGLE
-function toggleSidebar() {
-    document.getElementById("sidebar").classList.toggle("closed");
-    document.getElementById("main").classList.toggle("full");
-}
-
 // PAGE SWITCH
-function showPage(page) {
-    document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
-    document.getElementById(page).classList.remove("hidden");
+function showPage(p){
+    document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
+    document.getElementById(p).classList.remove("hidden");
 }
 
-// SCAN SYSTEM
-let scanning = false;
-let timer = 0;
-let interval;
-
-function startScan() {
-    scanning = true;
-    timer = 0;
-
-    document.getElementById("status").innerText = "Running";
-    document.getElementById("status").style.color = "lightgreen";
-
-    document.getElementById("scanPanel").style.display = "block";
-    document.getElementById("logs").innerHTML = "";
-
-    interval = setInterval(() => {
-        timer++;
-
-        document.getElementById("elapsed").innerText = timer + "s";
-        let remaining = Math.max(10 - timer, 0);
-        document.getElementById("remaining").innerText = remaining + "s";
-
-        addLog();
-
-        if (timer >= 10) {
-            addLog("✔ Scan Completed");
-            clearInterval(interval);
-        }
-
-    }, 1000);
-}
-
-function stopScan() {
-    scanning = false;
-
-    document.getElementById("status").innerText = "Stopped";
-    document.getElementById("status").style.color = "red";
-
-    clearInterval(interval);
-    addLog("⛔ Scan Stopped");
-}
-
-// FAKE LOG GENERATOR
-function addLog(custom = null) {
-    const logs = document.getElementById("logs");
-
-    const messages = [
-        "Scanning incoming packets...",
-        "Analyzing traffic pattern...",
-        "Checking anomaly signatures...",
-        "Running AI detection model...",
-        "Inspecting IP behavior...",
-        "Evaluating threat level..."
-    ];
-
-    let msg = custom || messages[Math.floor(Math.random() * messages.length)];
-
-    logs.innerHTML += "➤ " + msg + "<br>";
-    logs.scrollTop = logs.scrollHeight;
-}
-
-// LOAD DATA FROM API
-async function loadData() {
-    try {
-        const res = await fetch("/data");
-        const data = await res.json();
-
-        let html = "";
-        let attackCount = 0;
-
-        data.reverse().forEach(d => {
-            if (d.status === "ATTACK") attackCount++;
-
-            html += `
-            <tr>
-                <td>${d.time}</td>
-                <td>${d.ip}</td>
-                <td class="${d.status}">${d.status}</td>
-                <td>${d.final.toFixed(3)}</td>
-            </tr>`;
-        });
-
-        document.getElementById("table").innerHTML = html;
-        document.getElementById("total").innerText = data.length;
-        document.getElementById("attacks").innerText = attackCount;
-
-    } catch {
-        console.log("API not ready");
+// DEVICE IP
+async function loadIP(){
+    try{
+        let r=await fetch("https://api.ipify.org?format=json");
+        let d=await r.json();
+        document.getElementById("deviceIP").innerText=d.ip;
+    }catch{
+        document.getElementById("deviceIP").innerText="LOCAL";
     }
 }
+loadIP();
 
-setInterval(loadData, 1000);
+// SCAN
+let timer=0, interval;
+
+function startScan(){
+    timer=0;
+    document.getElementById("status").innerText="Running";
+
+    interval=setInterval(()=>{
+        timer++;
+        document.getElementById("elapsed").innerText=timer;
+        addLog("Scanning...");
+    },1000);
+}
+
+function stopScan(){
+    clearInterval(interval);
+    document.getElementById("status").innerText="Stopped";
+    addLog("Stopped");
+}
+
+function addLog(msg){
+    let box=document.getElementById("logs");
+    box.innerHTML+=msg+"<br>";
+}
+
+// GRAPH
+let chart;
+
+async function loadGraph(){
+    let r=await fetch("/data");
+    let d=await r.json();
+
+    let last=d.slice(-20);
+    let labels=last.map(x=>x.time);
+    let scores=last.map(x=>x.final);
+
+    if(chart) chart.destroy();
+
+    chart=new Chart(document.getElementById("chart"),{
+        type:"bar",
+        data:{labels:labels,datasets:[{data:scores}]}
+    });
+}
+
+// DATA
+async function loadData(){
+    let r=await fetch("/data");
+    let d=await r.json();
+
+    let html="", attack=0;
+
+    d.forEach(x=>{
+        if(x.status==="ATTACK") attack++;
+        html+=`<tr>
+        <td>${x.time}</td>
+        <td>${x.ip}</td>
+        <td class="${x.status}">${x.status}</td>
+        <td>${x.final.toFixed(3)}</td>
+        </tr>`;
+    });
+
+    document.getElementById("table").innerHTML=html;
+    document.getElementById("total").innerText=d.length;
+    document.getElementById("attacks").innerText=attack;
+}
+
+// ALERTS
+async function loadAlerts(){
+    let r=await fetch("/incidents");
+    let d=await r.json();
+
+    let box=document.getElementById("alerts");
+    let list=document.getElementById("incidentList");
+
+    box.innerHTML="";
+    list.innerHTML="";
+
+    d.slice(-3).forEach(a=>{
+        box.innerHTML+=`<div class="alert">⚠ ${a.ip}</div>`;
+    });
+
+    d.forEach(a=>{
+        list.innerHTML+=`<div class="alert">${a.ip} - ${a.status}</div>`;
+    });
+}
+
+// LOOP
+setInterval(()=>{
+    loadData();
+    loadGraph();
+    loadAlerts();
+},2000);
+
+loadData();
+loadGraph();
+loadAlerts();
 
 </script>
 
