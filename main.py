@@ -162,3 +162,36 @@ def dashboard():
 @app.get("/data")
 def get_data():
     return data_store[-100:]
+
+@app.get("/incidents")
+def get_incidents():
+    recent = data_store[-200:]   # only scan recent logs
+
+    return [
+        r for r in recent
+        if r["status"] in ["ATTACK", "SUSPICIOUS"]
+    ][-50:]
+
+@app.get("/stats")
+def get_stats():
+    normal = suspicious = attack = 0
+
+    for r in data_store[-200:]:  # only recent data
+        if r["status"] == "NORMAL":
+            normal += 1
+        elif r["status"] == "SUSPICIOUS":
+            suspicious += 1
+        elif r["status"] == "ATTACK":
+            attack += 1
+
+    return {
+        "normal": normal,
+        "suspicious": suspicious,
+        "attack": attack
+    }
+
+@app.get("/latest")
+def get_latest():
+    if not data_store:
+        return {}
+    return data_store[-1]
