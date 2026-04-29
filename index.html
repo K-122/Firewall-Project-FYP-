@@ -12,14 +12,39 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 
 /* SIDEBAR */
 .sidebar {
-    width:220px; height:100vh; position:fixed;
-    background:#0f172a; padding:20px;
+    width: 220px;
+    height: 100vh;
+    position: fixed;
+    background: #0f172a;
+    padding: 20px;
+    transition: all 0.3s ease;
 }
-.sidebar a { display:block; padding:10px; color:#94a3b8; cursor:pointer; }
-.sidebar a:hover { background:#1e293b; }
 
-/* MAIN */
-.main { margin-left:240px; padding:20px; }
+.sidebar.closed {
+    width: 70px;
+}
+
+/* Hide text when collapsed */
+.sidebar.closed .text {
+    display: none;
+}
+
+/* Toggle button */
+.toggle-btn {
+    cursor: pointer;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+/* MAIN shift */
+.main {
+    margin-left: 240px;
+    transition: all 0.3s ease;
+}
+
+.main.full {
+    margin-left: 90px;
+}
 
 /* CARD */
 .card {
@@ -27,6 +52,15 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
     padding:20px;
     border-radius:10px;
     margin-bottom:20px;
+}
+
+.card.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
 }
 
 /* BUTTON */
@@ -61,13 +95,16 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
 
 <!-- SIDEBAR -->
 
-<div class="sidebar">
-<h2>🦈 SHARRK_OS</h2>
-<a onclick="showPage('🖥️Dashboard')">Dashboard</a>
-<a onclick="showPage('📡Traffic')">Traffic</a>
-<a onclick="showPage('🚨Incidents')">Incidents</a>
-</div>
+<div class="sidebar" id="sidebar">
+    <div class="toggle-btn" onclick="toggleSidebar()">☰</div>
 
+    <h2>🦈 <span class="text">SHARRK_OS</span></h2>
+
+    <a onclick="showPage('dashboard')">🖥️ <span class="text">Dashboard</span></a>
+    <a onclick="showPage('traffic')">📡 <span class="text">Traffic</span></a>
+    <a onclick="showPage('incidents')">🚨 <span class="text">Incidents</span></a>
+</div>
+    
 <!-- MAIN -->
 
 <div class="main">
@@ -78,56 +115,185 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
 
 <h2>AI Firewall Dashboard</h2>
 
-<div class="card">
-IP: <span id="deviceIP">Loading...</span><br>
-Total: <span id="total">0</span><br>
-Attacks: <span id="attacks">0</span>
+<!-- LEFT: IP + TOTAL -->
+<div class="card" style="flex:1;">
+    <p><b>IP:</b> <span id="deviceIP">Loading...</span></p>
+    <p><b>Total:</b> <span id="total">0</span></p>
+    <p><b>Attacks:</b> <span id="attacks">0</span></p>
 </div>
 
-<div class="card">
-<button onclick="startScan()" class="btn start">Start</button>
-<button onclick="stopScan()" class="btn stop">Stop</button>
-<p>Status: <span id="status">Idle</span></p>
+<!-- RIGHT: CONTROL -->
+<div class="card" style="flex:1;">
+    <button onclick="startScan()" class="btn start">Start</button>
+    <button onclick="stopScan()" class="btn stop">Stop</button>
+    <p>Status: <span id="status">Idle</span></p>
+</div>
+<!-- LEFT: GRAPH -->
+<div class="card" style="flex:2;">
+    <h3>📊 Live Graph</h3>
+
+    <div style="margin-bottom:10px;">
+        <select id="chartType" onchange="changeChartType()">
+            <option value="bar">Bar</option>
+            <option value="line">Line</option>
+        </select>
+        <button onclick="toggleFullscreen()">🔍</button>
+    </div>
+
+    <canvas id="chart" style="height:250px;"></canvas>
 </div>
 
-<div class="card">
-<p>Elapsed: <span id="elapsed">0</span></p>
-<div id="logs"></div>
+<!-- RIGHT: ALERT -->
+<div class="card" style="flex:1;">
+    <h3>🚨 Alerts</h3>
+    <div id="alerts"></div>
 </div>
-
-<div class="card">
-<canvas id="chart"></canvas>
-</div>
-
-<div class="card">
-<div id="alerts"></div>
-</div>
-
-</div>
-
+<table>
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>IP</th>
+            <th>Status</th>
+            <th>Score</th>
+        </tr>
+    </thead>
+    <tbody id="table"></tbody>
+</table>
 <!-- TRAFFIC -->
 
 <div id="traffic" class="page hidden">
-<table>
-<tr><th>Time</th><th>IP</th><th>Status</th><th>Score</th></tr>
-<tbody id="table"></tbody>
-</table>
+
+<h2>📡 Traffic Analysis</h2>
+
+<!-- ===== TOP METRICS ===== -->
+
+<div style="display:flex; gap:20px; margin-bottom:20px;">
+
+```
+<div class="card" style="flex:1;">
+    <p style="color:#94a3b8;">TOTAL REQUESTS (24H)</p>
+    <h2 id="totalReq">0</h2>
 </div>
+
+<div class="card" style="flex:1;">
+    <p style="color:#94a3b8;">ANOMALIES DETECTED</p>
+    <h2 id="anomalies">0</h2>
+</div>
+
+<div class="card" style="flex:1;">
+    <p style="color:#94a3b8;">MEAN LATENCY</p>
+    <h2 id="latency" style="color:#22c55e;">0ms</h2>
+</div>
+```
+
+</div>
+
+<!-- ===== GRAPH ===== -->
+
+<div class="card">
+    <h3>📊 Live Traffic Graph</h3>
+    <canvas id="trafficChart"></canvas>
+</div>
+
+<!-- ===== TABLE ===== -->
+
+<div class="card">
+    <h3>📋 Traffic Logs</h3>
+
+```
+<table>
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>IP</th>
+            <th>Status</th>
+            <th>Score</th>
+        </tr>
+    </thead>
+    <tbody id="trafficTable"></tbody>
+</table>
+```
+
+</div>
+
+</div>
+
 
 <!-- INCIDENTS -->
 
 <div id="incidents" class="page hidden">
-<div id="incidentList"></div>
+
+<h2>🚨 Incident Analysis</h2>
+
+<!-- ===== TOP: ATTACK DIAGRAM ===== -->
+
+<div style="display:flex; gap:20px; margin-bottom:20px;">
+
+```
+<!-- LEFT: VECTOR FLOW -->
+<div class="card" style="flex:2;">
+    <h3>⚡ Attack Vector</h3>
+
+    <div style="display:flex; justify-content:space-around; align-items:center; margin-top:20px;">
+
+        <div>🌐<br>Gateway</div>
+        <div>➡️</div>
+        <div>🛡️<br>WAF-AI</div>
+        <div>➡️</div>
+        <div>💾<br>Core DB</div>
+
+    </div>
+</div>
+
+<!-- RIGHT: CONFIDENCE -->
+<div class="card" style="flex:1;">
+    <h3>📊 Confidence</h3>
+
+    <h1 id="confidenceScore">0%</h1>
+
+    <p>Malicious Intent</p>
+    <div style="background:#1e293b; height:6px;">
+        <div id="intentBar" style="background:red; height:6px; width:0%;"></div>
+    </div>
+
+    <p style="margin-top:10px;">Exfiltration Risk</p>
+    <div style="background:#1e293b; height:6px;">
+        <div id="riskBar" style="background:green; height:6px; width:0%;"></div>
+    </div>
+
+</div>
+```
+
+</div>
+
+<!-- ===== TIMELINE ===== -->
+
+<div class="card">
+    <h3>📜 Event Forensics Timeline</h3>
+
+```
+<div id="timeline"></div>
+```
+
 </div>
 
 </div>
-
-<script>
-
+    
 // PAGE SWITCH
-function showPage(p){
-    document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
-    document.getElementById(p).classList.remove("hidden");
+function showPage(page) {
+    document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+    document.getElementById(page).classList.remove("hidden");
+
+    //  reload content when switching
+    if (page === "dashboard") {
+        loadDashboard();
+    }
+    if (page === "traffic") {
+        loadData();
+    }
+    if (page === "incidents") {
+        loadAlerts();
+    }
 }
 
 // DEVICE IP
@@ -167,23 +333,50 @@ function addLog(msg){
     box.innerHTML+=msg+"<br>";
 }
 
+    function loadGraph() {
+    let canvas = document.getElementById("chart");
+    if (!canvas) return;
+
+    let ctx = canvas.getContext("2d");
+
+    fetch("/data")
+    .then(res => res.json())
+    .then(data => {
+
+        let last = data.slice(-20);
+        let labels = last.map(d => d.time);
+        let scores = last.map(d => d.final);
+
+        if (window.chart) {
+            window.chart.destroy();
+        }
+
+        window.chart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: scores,
+                    backgroundColor: "#22c55e"
+                }]
+            }
+        });
+    });
+}
 // GRAPH
 let chart;
+let currentType = "bar";
 
-async function loadGraph(){
-    let r=await fetch("/data");
-    let d=await r.json();
+function changeChartType() {
+    currentType = document.getElementById("chartType").value;
+    loadGraph();
+}
 
-    let last=d.slice(-20);
-    let labels=last.map(x=>x.time);
-    let scores=last.map(x=>x.final);
+function toggleFullscreen() {
+    let card = document.querySelector("#chart").closest(".card");
+    card.classList.toggle("fullscreen");
 
-    if(chart) chart.destroy();
-
-    chart=new Chart(document.getElementById("chart"),{
-        type:"bar",
-        data:{labels:labels,datasets:[{data:scores}]}
-    });
+    setTimeout(loadGraph, 300);
 }
 
 // DATA
