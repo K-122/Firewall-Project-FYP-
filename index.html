@@ -18,6 +18,28 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 .sidebar a { display:block; padding:10px; color:#94a3b8; cursor:pointer; }
 .sidebar a:hover { background:#1e293b; }
 
+    .sidebar {
+    width: 220px;
+    transition: 0.3s;
+}
+
+.sidebar.closed {
+    width: 70px;
+}
+
+.main {
+    margin-left: 240px;
+    transition: 0.3s;
+}
+
+.main.full {
+    margin-left: 90px;
+}
+
+/* hide text when collapsed */
+.sidebar.closed span {
+    display: none;
+}
 /* MAIN */
 .main { margin-left:240px; padding:20px; }
 
@@ -101,7 +123,7 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
     <p>Status: <span id="status">Idle</span></p>
 </div>
 <!-- GRAPH -->
-<div class="card" style="flex:2;">
+<div class="card" style="flex:1;">
     <h3>📊 Live Graph</h3>
     <canvas id="chart" style="height:250px;"></canvas>
 </div>
@@ -117,10 +139,55 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
 <!-- TRAFFIC -->
 
 <div id="traffic" class="page hidden">
-<table>
-<tr><th>Time</th><th>IP</th><th>Status</th><th>Score</th></tr>
-<tbody id="table"></tbody>
-</table>
+
+<h2>📡 Traffic Analysis</h2>
+
+<!-- ===== SPLIT LAYOUT ===== -->
+
+<div style="display:flex; gap:20px; align-items:flex-start;">
+
+<!-- ===== LEFT: TABLE ===== -->
+<div class="card" style="flex:2;">
+
+    <h3>📋 Live Traffic Logs</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>IP</th>
+                <th>Status</th>
+                <th>Score</th>
+            </tr>
+        </thead>
+        <tbody id="table"></tbody>
+    </table>
+
+</div>
+
+<!-- ===== RIGHT: GRAPH ===== -->
+<div class="card" style="flex:1; max-width:400px;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>📊 Graph</h3>
+
+        <div>
+            <select id="chartType" onchange="changeChartType()">
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+                <option value="pie">Pie</option>
+            </select>
+
+            <button onclick="toggleFullscreen()">🔍</button>
+        </div>
+    </div>
+
+    <canvas id="trafficChart" style="height:200px;"></canvas>
+
+</div>
+
+</div>
+
 </div>
 
 <!-- INCIDENTS -->
@@ -139,6 +206,18 @@ function showPage(p){
     document.getElementById(p).classList.remove("hidden");
 }
 
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("closed");
+    document.querySelector(".main").classList.toggle("full");
+}
+
+function updateSecurity(score) {
+    let percent = Math.round(score * 100);
+
+    document.getElementById("securityBar").style.width = percent + "%";
+    document.getElementById("securityText").innerText = percent + "% Secure";
+}
+    
 // DEVICE IP
 async function loadIP(){
     try{
@@ -197,14 +276,18 @@ async function loadGraph(){
 
 // DATA
 async function loadData(){
-    let r=await fetch("/data");
-    let d=await r.json();
+    let r = await fetch("/data");
+    let d = await r.json();
 
-    let html="", attack=0;
+    if (!d || d.length === 0) return;
 
-    d.forEach(x=>{
-        if(x.status==="ATTACK") attack++;
-        html+=`<tr>
+    let html = "";
+    let attack = 0;
+
+    d.forEach(x => {
+        if (x.status === "ATTACK") attack++;
+
+        html += `<tr>
         <td>${x.time}</td>
         <td>${x.ip}</td>
         <td class="${x.status}">${x.status}</td>
@@ -212,9 +295,33 @@ async function loadData(){
         </tr>`;
     });
 
-    document.getElementById("table").innerHTML=html;
-    document.getElementById("total").innerText=d.length;
-    document.getElementById("attacks").innerText=attack;
+    // ===== SAFE UPDATE =====
+    let table = document.getElementById("table");
+    if (table) table.innerHTML = html;
+
+    let total = document.getElementById("total");
+    let attacks = document.getElementById("attacks");
+
+    if (total) total.innerText = d.length;
+    if (attacks) attacks.innerText = attack;
+
+    // ===== SECURITY LEVEL (NEW 🔥) =====
+    let securityScore = 1 - (attack / d.length);
+    let percent = Math.round(securityScore * 100);
+
+    let bar = document.getElementById("securityBar");
+    let text = document.getElementById("securityText");
+
+    if (bar) bar.style.width = percent + "%";
+    if (text) text.innerText = percent + "% Secure";
+
+    // ===== SYSTEM LOGS (OPTIONAL) =====
+    let logs = document.getElementById("logs");
+    if (logs) {
+        logs.innerHTML = d.slice(-5).map(x =>
+            `${x.time} - ${x.status}`
+        ).join("<br>");
+    }
 }
 
 // ALERTS
