@@ -60,12 +60,12 @@ th, td { padding:12px; border-bottom:1px solid #1f2937; }
 <body>
 
 <!-- SIDEBAR -->
-
-<div class="sidebar">
+<div class="sidebar"id="sidebar">
+    <div onclick="toggleSidebar()" style="cursor:pointer; margin-bottom:20px;">☰</div>
 <h2>🦈 SHARRK_OS</h2>
-<a onclick="showPage('🖥️Dashboard')">Dashboard</a>
-<a onclick="showPage('📡Traffic')">Traffic</a>
-<a onclick="showPage('🚨Incidents')">Incidents</a>
+<a onclick="showPage('Dashboard')">🖥️<span>Dashboard</span></a>
+<a onclick="showPage('Traffic')">📡<span>Traffic Analysis</span></a>
+<a onclick="showPage('Incidents')">🚨<span>Incidents</span></a>
 </div>
 
 <!-- MAIN -->
