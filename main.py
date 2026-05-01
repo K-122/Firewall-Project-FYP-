@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import json
 import numpy as np
 import time
@@ -8,6 +9,7 @@ import threading
 import random
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 print("🚀 Starting AI Firewall System...")
 
@@ -157,7 +159,7 @@ def startup():
 # =========================
 @app.get("/")
 def dashboard():
-    return FileResponse("index.html")
+    return FileResponse("static/index.html")
 
 @app.get("/data")
 def get_data():
@@ -195,3 +197,26 @@ def get_latest():
     if not data_store:
         return {}
     return data_store[-1]
+
+
+# =========================
+# MANUAL ACTIONS API
+# =========================
+
+@app.post("/block/{ip}")
+def api_block(ip: str):
+    block_ip(ip)
+    return {"status": "blocked", "ip": ip}
+
+
+@app.post("/allow/{ip}")
+def api_allow(ip: str):
+    if ip in blocked_ips:
+        blocked_ips.remove(ip)
+    return {"status": "allowed", "ip": ip}
+
+
+@app.post("/quarantine/{ip}")
+def api_quarantine(ip: str):
+    print(f"🛡️ Quarantined IP: {ip}")
+    return {"status": "quarantined", "ip": ip}
