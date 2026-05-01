@@ -250,6 +250,7 @@ td:nth-child(4) {
                 <th>IP</th>
                 <th>Status</th>
                 <th>Score</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody id="table"></tbody>
@@ -452,16 +453,15 @@ function toggleFullscreen() {
 }
 
 async function loadTrafficGraph() {
-    let res = await fetch("/data");
-    let data = await res.json();
 
+    let data = globalData;   // use same data as table
     if (!data || data.length === 0) return;
 
     let labels, scores;
 
     if (currentType === "histogram") {
 
-        // 🔥 Histogram bins
+        // Histogram bins
         let bins = [0, 0, 0, 0, 0];
 
         data.forEach(d => {
@@ -478,7 +478,7 @@ async function loadTrafficGraph() {
 
     } else {
 
-        // 🔥 Normal graph (last 20)
+        // Last 20 records (same as table view)
         let last = data.slice(-20);
         labels = last.map(d => d.time);
         scores = last.map(d => d.final);
@@ -488,15 +488,23 @@ async function loadTrafficGraph() {
     // destroy old chart
     if (trafficChart) trafficChart.destroy();
 
-    // create new chart
+    // create chart
     trafficChart = new Chart(document.getElementById("trafficChart"), {
         type: currentType === "histogram" ? "bar" : currentType,
         data: {
             labels: labels,
             datasets: [{
-                label: "Traffic Score",
+                label: currentType === "histogram"
+                    ? "Score Distribution"
+                    : "Traffic Score",
                 data: scores,
-                backgroundColor: "#22c55e",
+                backgroundColor: currentType === "histogram"
+                    ? "#3b82f6"
+                    : scores.map(s =>
+                        s > 0.7 ? "#ef4444" :
+                        s > 0.4 ? "#f59e0b" :
+                        "#22c55e"
+                    ),
                 borderColor: "#22c55e",
                 fill: currentType === "line"
             }]
@@ -505,19 +513,43 @@ async function loadTrafficGraph() {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
+            plugins: {
+                legend: {
+                    labels: { color: "#cbd5f5" }
+                }
+            },
             scales: currentType === "pie" ? {} : {
-                y: { beginAtZero: true }
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: "#94a3b8" }
+                },
+                x: {
+                    ticks: { color: "#94a3b8" }
+                }
             }
         }
     });
 }
+
+async function blockIP(ip) {
+    await fetch(`/block/${ip}`, { method: "POST" });
+    alert("🚫 Blocked: " + ip);
+}
+
+async function allowIP(ip) {
+    await fetch(`/allow/${ip}`, { method: "POST" });
+    alert("✅ Allowed: " + ip);
+}
     
 // DATA
+let globalData = [];
 async function loadData(){
     let r = await fetch("/data");
     let d = await r.json();
 
     if (!d || d.length === 0) return;
+
+    globalData = d;   // STORE DATA FOR GRAPH
 
     let html = "";
     let attack = 0;
@@ -525,13 +557,24 @@ async function loadData(){
     d.forEach(x => {
         if (x.status === "ATTACK") attack++;
 
-        html += `<tr>
-        <td>${x.time}</td>
-        <td>${x.ip}</td>
-        <td class="${x.status}">${x.status}</td>
-        <td>${x.final.toFixed(3)}</td>
-        </tr>`;
+       html += `<tr>
+<td>${x.time}</td>
+<td>${x.ip}</td>
+<td class="${x.status}">${x.status}</td>
+<td>${x.final.toFixed(3)}</td>
+
+<td>
+    <button onclick="blockIP('${x.ip}')" class="btn stop">Deny</button>
+    <button onclick="allowIP('${x.ip}')" class="btn start">Allow</button>
+</td>
+
+</tr>`;
     });
+
+    document.getElementById("table").innerHTML = html;
+
+    loadTrafficGraph(); //  UPDATE GRAPH SAME TIME
+}
 
     // ===== SAFE UPDATE =====
     let table = document.getElementById("table");
