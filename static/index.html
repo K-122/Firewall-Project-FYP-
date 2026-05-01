@@ -1054,6 +1054,17 @@ async function loadAlerts(){
     });
 }
 
+function detectAttackType(x) {
+
+    if (x.status === "NORMAL") return "LEGITIMATE_TRAFFIC";
+
+    if (x.final > 0.85) return "SQL_INJECTION_DETECTED";
+    if (x.final > 0.7) return "DDOS_ATTACK_DETECTED";
+    if (x.final > 0.5) return "BRUTE_FORCE_ATTEMPT";
+    if (x.final > 0.3) return "SUSPICIOUS_ACTIVITY";
+
+    return "UNKNOWN_THREAT";
+}
     
 // Incident
 async function loadIncidentsPage() {
@@ -1078,12 +1089,27 @@ async function loadIncidentsPage() {
         else if (x.status === "SUSPICIOUS") cls = "suspicious";
 
         timeline.innerHTML += `
-            <div class="timeline-item ${cls}">
-                <b>${x.time}</b><br>
-                ${x.ip} → ${x.status}<br>
-                Score: ${x.final.toFixed(2)}
-            </div>
-        `;
+    <div class="timeline-item ${cls}">
+        
+        <div style="font-size:11px; color:#94a3b8;">
+            ${x.time}
+        </div>
+
+        <div style="font-weight:bold; margin-top:4px;">
+            ${x.attack_type || detectAttackType(x)}
+        </div>
+
+        <div style="font-size:13px; color:#cbd5f5; margin-top:4px;">
+            Origin: ${x.ip} (${x.location || "Local"})
+        </div>
+
+        <div style="font-size:13px; margin-top:4px;">
+            Score: ${x.final.toFixed(2)} 
+            | Status: ${x.status}
+        </div>
+
+    </div>
+`;
     });
 }
     
