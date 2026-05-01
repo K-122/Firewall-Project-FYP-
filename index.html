@@ -137,7 +137,62 @@ th:nth-child(4), td:nth-child(4) { width: 100px; }
 td:nth-child(4) {
     font-family: monospace;
 }
+    
+/* ===== LAYOUT ===== */
+.traffic-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
 
+/* ===== TABLE ===== */
+.traffic-table {
+    flex: 2;
+    min-width: 0;
+}
+
+.table-wrapper {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* ===== GRAPH ===== */
+.traffic-graph {
+    flex: 1;
+    max-width: 400px;
+}
+
+/* graph header */
+.graph-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* FIX GRAPH SIZE (IMPORTANT) */
+.graph-box {
+    height: 240px;
+}
+
+/* prevent chart jumping */
+.graph-box canvas {
+    height: 100% !important;
+}
+
+/* ===== FULLSCREEN ===== */
+.card.fullscreen {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 70%;
+    z-index: 999;
+}
+
+.card.fullscreen .graph-box {
+    height: 100%;
+}
 
 /* STATUS */
 .ATTACK { color:red; }
@@ -234,58 +289,58 @@ td:nth-child(4) {
 
 <h2>📡 Traffic Analysis</h2>
 
-<!-- ===== SPLIT LAYOUT ===== -->
+<div class="traffic-container">
 
-<div style="display:flex; gap:20px; align-items:flex-start;">
+    <!-- LEFT: TABLE -->
+    <div class="card traffic-table">
 
-<!-- ===== LEFT: TABLE ===== -->
-<div class="card" style="flex:2;">
+        <h3>📋 Live Traffic Logs</h3>
 
-    <h3>📋 Live Traffic Logs</h3>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>IP</th>
-                <th>Status</th>
-                <th>Score</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="table"></tbody>
-    </table>
-
-</div>
-
-<!-- ===== RIGHT: GRAPH ===== -->
-<div class="card" style="flex:1; max-width:400px;">
-
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3>📊 Graph</h3>
-
-        <div>
-            <select id="chartType" onchange="changeChartType()">
-                <option value="bar">Bar</option>
-                <option value="line">Line</option>
-                <option value="pie">Pie</option>
-                <option value="histogram">Histogram</option>
-            </select>
-
-            <button onclick="toggleFullscreen()">⛶</button>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>IP</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="table"></tbody>
+            </table>
         </div>
+
     </div>
 
-    <canvas id="trafficChart" style="height:220px;"></canvas>
+    <!-- RIGHT: GRAPH -->
+    <div class="card traffic-graph">
 
+        <div class="graph-header">
+            <h3>📊 Graph</h3>
+
+            <div>
+                <select id="chartType" onchange="changeChartType()">
+                    <option value="bar">Bar</option>
+                    <option value="line">Line</option>
+                    <option value="pie">Pie</option>
+                    <option value="histogram">Histogram</option>
+                </select>
+
+                <button onclick="toggleFullscreen()">⛶</button>
+            </div>
+        </div>
+
+        <div class="graph-box">
+            <canvas id="trafficChart"></canvas>
+        </div>
+
+    </div>
 </div>
-
 </div>
-
-</div>
-
+    
+<!-- Incidents -->
 <div id="incidents" class="page hidden">
-
 <h2>🚨 Incident Analysis</h2>
 
 <!-- ===== TOP INFO ===== -->
@@ -454,14 +509,13 @@ function toggleFullscreen() {
 
 async function loadTrafficGraph() {
 
-    let data = globalData;   // use same data as table
+    let data = globalData;
     if (!data || data.length === 0) return;
 
     let labels, scores;
 
     if (currentType === "histogram") {
 
-        // Histogram bins
         let bins = [0, 0, 0, 0, 0];
 
         data.forEach(d => {
@@ -478,18 +532,36 @@ async function loadTrafficGraph() {
 
     } else {
 
-        // Last 20 records (same as table view)
         let last = data.slice(-20);
         labels = last.map(d => d.time);
         scores = last.map(d => d.final);
 
     }
 
-    // destroy old chart
-    if (trafficChart) trafficChart.destroy();
+    let ctx = document.getElementById("trafficChart");
+    if (!ctx) return;
 
-    // create chart
-    trafficChart = new Chart(document.getElementById("trafficChart"), {
+    //  UPDATE EXISTING CHART (NO DESTROY)
+    if (trafficChart) {
+        trafficChart.config.type = currentType === "histogram" ? "bar" : currentType;
+        trafficChart.data.labels = labels;
+        trafficChart.data.datasets[0].data = scores;
+
+        trafficChart.data.datasets[0].backgroundColor =
+            currentType === "histogram"
+                ? "#3b82f6"
+                : scores.map(s =>
+                    s > 0.7 ? "#ef4444" :
+                    s > 0.4 ? "#f59e0b" :
+                    "#22c55e"
+                );
+
+        trafficChart.update();
+        return;
+    }
+
+    //  CREATE ONLY ONCE
+    trafficChart = new Chart(ctx, {
         type: currentType === "histogram" ? "bar" : currentType,
         data: {
             labels: labels,
@@ -498,13 +570,7 @@ async function loadTrafficGraph() {
                     ? "Score Distribution"
                     : "Traffic Score",
                 data: scores,
-                backgroundColor: currentType === "histogram"
-                    ? "#3b82f6"
-                    : scores.map(s =>
-                        s > 0.7 ? "#ef4444" :
-                        s > 0.4 ? "#f59e0b" :
-                        "#22c55e"
-                    ),
+                backgroundColor: "#22c55e",
                 borderColor: "#22c55e",
                 fill: currentType === "line"
             }]
