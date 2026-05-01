@@ -19,7 +19,7 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 .sidebar a:hover { background:#1e293b; }
 
 .sidebar {
-    width: 220px;
+    width: 200px;
     height: 100vh;
     position: fixed;
     background: #0f172a;
@@ -61,7 +61,7 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 
 /* match collapsed sidebar width */
 .main.full {
-    margin-left: 80px;   /*  MUST match sidebar.closed */
+    margin-left: 60px;   /*  MUST match sidebar.closed */
 }
 
 /* REMOVE this gap */
@@ -84,6 +84,7 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
     padding:16px;
     border-radius:10px;
     margin-bottom:20px;
+    overflow: hidden;
 }
 
 .card h3 {
@@ -123,25 +124,50 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 .start { background:#22c55e; }
 .stop { background:#ef4444; color:white; }
 
-/* TABLE */
-table { width:100%; border-collapse:collapse; }
-th, td { padding:12px; border-bottom:1px solid #1f2937; }
+/* ===== TABLE BASE ===== */
 table {
-    table-layout: fixed;   
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
 }
+
+/* ===== CELL STYLE ===== */
+th, td {
+    padding: 8px 10px;          /* 🔥 tighter spacing */
+    border-bottom: 1px solid #1f2937;
+    font-size: 14px;
+}
+
+/* ===== ALIGNMENT ===== */
 th:nth-child(1), td:nth-child(1) { text-align: left; }
 th:nth-child(2), td:nth-child(2) { text-align: left; }
 th:nth-child(3), td:nth-child(3) { text-align: center; }
 th:nth-child(4), td:nth-child(4) { text-align: right; }
+th:nth-child(5), td:nth-child(5) { text-align: center; } /* 🔥 action */
 
-th:nth-child(1), td:nth-child(1) { width: 120px; }
-th:nth-child(2), td:nth-child(2) { width: 220px; }
-th:nth-child(3), td:nth-child(3) { width: 140px; }
-th:nth-child(4), td:nth-child(4) { width: 100px; }
+/* ===== WIDTH (FIX OVERFLOW) ===== */
+th:nth-child(1), td:nth-child(1) { width: 90px; }
+th:nth-child(2), td:nth-child(2) { width: 150px; }
+th:nth-child(3), td:nth-child(3) { width: 110px; }
+th:nth-child(4), td:nth-child(4) { width: 80px; }
+th:nth-child(5), td:nth-child(5) { width: 130px; } /* action */
 
+/* ===== SCORE FONT ===== */
 td:nth-child(4) {
     font-family: monospace;
 }
+
+/* ===== BUTTON SPACING ===== */
+td button {
+    margin-right: 6px;
+    padding: 5px 8px;          /* smaller buttons */
+    font-size: 12px;
+}
+
+td button:last-child {
+    margin-right: 0;
+}
+
     
 /* ===== LAYOUT ===== */
 .traffic-container {
@@ -159,6 +185,7 @@ td:nth-child(4) {
 .table-wrapper {
     max-height: 500px;
     overflow-y: auto;
+    overflow-x: hidden;   
 }
 
 /* ===== GRAPH ===== */
@@ -421,48 +448,84 @@ td:nth-child(4) {
 </div>
     
 <!-- Incidents -->
-<div class="incident-top">
+<div id="incidents" class="page hidden">
+    <h2>🚨 Incident Analysis</h2>
 
-    <!-- LEFT -->
-    <div class="card small-card">
-        <h4>🌐 Source IP</h4>
-        <p id="incidentIP">-</p>
-    </div>
+    <!-- ===== TOP SECTION ===== -->
+    <div class="incident-top">
 
-    <!-- CENTER (VECTOR) -->
-    <div class="card vector-card">
-        <h4>⚡ Attack Vector</h4>
+        <!-- LEFT -->
+        <div class="card small-card">
+            <h4>🌐 Source IP</h4>
+            <p id="incidentIP">-</p>
+        </div>
 
-        <div class="vector-flow">
-            <div class="node">
-                <img src="/static/gateway.png">
-                <span>Gateway</span>
-            </div>
+        <!-- CENTER -->
+        <div class="card vector-card">
+            <h4>⚡ Attack Vector</h4>
 
-            <div class="line"></div>
+            <div class="vector-flow">
+                <div class="node">
+                    <img src="/static/gateway.png">
+                    <span>Gateway</span>
+                </div>
 
-            <div class="node active">
-                <img src="/static/waf.png">
-                <span>WAF-AI</span>
-            </div>
+                <div class="line"></div>
 
-            <div class="line"></div>
+                <div class="node active">
+                    <img src="/static/waf.png">
+                    <span>WAF-AI</span>
+                </div>
 
-            <div class="node">
-                <img src="/static/db.png">
-                <span>Core DB</span>
+                <div class="line"></div>
+
+                <div class="node">
+                    <img src="/static/db.png">
+                    <span>Core DB</span>
+                </div>
             </div>
         </div>
+
+        <!-- RIGHT -->
+        <div class="card small-card">
+            <h4>📊 Confidence</h4>
+            <p id="confidence">0%</p>
+        </div>
+
     </div>
 
-    <!-- RIGHT -->
-    <div class="card small-card">
-        <h4>📊 Confidence</h4>
-        <p id="confidence">0%</p>
+    <!-- ===== MAIN SECTION ===== -->
+    <div class="incident-main">
+
+        <!-- LEFT: TIMELINE -->
+        <div class="card timeline-card">
+            <h3>🕒 Event Timeline</h3>
+            <div id="timeline"></div>
+        </div>
+
+        <!-- RIGHT: ACTIONS -->
+        <div class="card action-card">
+            <h3>⚙️ Actions</h3>
+
+            <button class="btn stop"
+                onclick="blockIP(document.getElementById('incidentIP').innerText)">
+                🚫 Block IP
+            </button>
+
+            <button class="btn" onclick="retrainModel()">
+                🔄 Retrain Model
+            </button>
+
+            <button class="btn start"
+                onclick="quarantineIP(document.getElementById('incidentIP').innerText)">
+                🛡️ Quarantine
+            </button>
+
+        </div>
+
     </div>
 
 </div>
-
 
 <script>
 
@@ -785,16 +848,14 @@ async function loadIncidentsPage() {
     let res = await fetch("/incidents");
     let data = await res.json();
 
-    if (!data || data.length === 0) return;
+    if (!data.length) return;
 
     let latest = data[data.length - 1];
 
-    // ===== TOP INFO =====
     document.getElementById("incidentIP").innerText = latest.ip;
     document.getElementById("confidence").innerText =
         Math.round(latest.final * 100) + "%";
 
-    // ===== TIMELINE =====
     let timeline = document.getElementById("timeline");
     timeline.innerHTML = "";
 
