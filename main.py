@@ -29,16 +29,22 @@ USE_FAKE = not os.path.exists(LOG_FILE)
 # BLOCK IP (LOCAL ONLY)
 # =========================
 def block_ip(ip):
-    if USE_FAKE:
-        return  # skip in cloud
-
     if ip in blocked_ips:
+        return
+
+    blocked_ips.add(ip)
+
+    # 🔥 UPDATE EXISTING RECORDS
+    for r in data_store:
+        if r["ip"] == ip:
+            r["blocked"] = True
+
+    if USE_FAKE:
+        print(f"🚫 (FAKE) Blocked IP: {ip}")
         return
 
     print(f"🚨 Blocking IP: {ip}")
     os.system(f"sudo iptables -A INPUT -s {ip} -j DROP")
-    blocked_ips.add(ip)
-
 # =========================
 # PROCESS LOG LINE
 # =========================
@@ -72,7 +78,8 @@ def process_line(line):
         "ip": src_ip,
         "final": float(final_score),
         "status": status,
-        "time": time.strftime("%H:%M:%S")
+        "time": time.strftime("%H:%M:%S"),
+        "blocked": src_ip in blocked_ips
     }
 
     data_store.append(record)
@@ -134,7 +141,8 @@ def fake_generator():
             "ip": f"192.168.1.{random.randint(1,255)}",
             "final": round(random.uniform(0.1, 1.0), 3),
             "status": status,
-            "time": time.strftime("%H:%M:%S")
+            "time": time.strftime("%H:%M:%S"),
+             "blocked": False
         }
 
         data_store.append(record)
@@ -167,13 +175,19 @@ def get_data():
 
 @app.get("/incidents")
 def get_incidents():
-    recent = data_store[-200:]   # only scan recent logs
+    recent = data_store[-200:]
 
-    return [
+    result = [
         r for r in recent
         if r["status"] in ["ATTACK", "SUSPICIOUS"]
     ][-50:]
 
+    # 🔥 mark blocked
+    for r in result:
+        if r["ip"] in blocked_ips:
+            r["status"] = "BLOCKED"
+
+    return result
 @app.get("/stats")
 def get_stats():
     normal = suspicious = attack = 0
@@ -211,8 +225,15 @@ def api_block(ip: str):
 
 @app.post("/allow/{ip}")
 def api_allow(ip: str):
+
     if ip in blocked_ips:
         blocked_ips.remove(ip)
+
+        # 🔥 update records
+        for r in data_store:
+            if r["ip"] == ip:
+                r["blocked"] = False
+
     return {"status": "allowed", "ip": ip}
 
 
@@ -220,3 +241,7 @@ def api_allow(ip: str):
 def api_quarantine(ip: str):
     print(f"🛡️ Quarantined IP: {ip}")
     return {"status": "quarantined", "ip": ip}
+
+@app.get("/blocked")
+def get_blocked():
+    return list(blocked_ips)
