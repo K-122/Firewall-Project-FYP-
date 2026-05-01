@@ -543,13 +543,14 @@ async function allowIP(ip) {
     
 // DATA
 let globalData = [];
+
 async function loadData(){
     let r = await fetch("/data");
     let d = await r.json();
 
     if (!d || d.length === 0) return;
 
-    globalData = d;   // STORE DATA FOR GRAPH
+    globalData = d;
 
     let html = "";
     let attack = 0;
@@ -557,36 +558,26 @@ async function loadData(){
     d.forEach(x => {
         if (x.status === "ATTACK") attack++;
 
-       html += `<tr>
-<td>${x.time}</td>
-<td>${x.ip}</td>
-<td class="${x.status}">${x.status}</td>
-<td>${x.final.toFixed(3)}</td>
-
-<td>
-    <button onclick="blockIP('${x.ip}')" class="btn stop">Deny</button>
-    <button onclick="allowIP('${x.ip}')" class="btn start">Allow</button>
-</td>
-
-</tr>`;
+        html += `<tr>
+        <td>${x.time}</td>
+        <td>${x.ip}</td>
+        <td class="${x.status}">${x.status}</td>
+        <td>${x.final.toFixed(3)}</td>
+        <td>
+            <button onclick="blockIP('${x.ip}')" class="btn stop">Deny</button>
+            <button onclick="allowIP('${x.ip}')" class="btn start">Allow</button>
+        </td>
+        </tr>`;
     });
 
+    //  update table
     document.getElementById("table").innerHTML = html;
 
-    loadTrafficGraph(); //  UPDATE GRAPH SAME TIME
-}
+    //  update stats
+    document.getElementById("total").innerText = d.length;
+    document.getElementById("attacks").innerText = attack;
 
-    // ===== SAFE UPDATE =====
-    let table = document.getElementById("table");
-    if (table) table.innerHTML = html;
-
-    let total = document.getElementById("total");
-    let attacks = document.getElementById("attacks");
-
-    if (total) total.innerText = d.length;
-    if (attacks) attacks.innerText = attack;
-
-    // ===== SECURITY LEVEL (NEW 🔥) =====
+    // security bar (only if exists)
     let securityScore = 1 - (attack / d.length);
     let percent = Math.round(securityScore * 100);
 
@@ -596,15 +587,17 @@ async function loadData(){
     if (bar) bar.style.width = percent + "%";
     if (text) text.innerText = percent + "% Secure";
 
-    // ===== SYSTEM LOGS (OPTIONAL) =====
+    // optional logs (only if exists)
     let logs = document.getElementById("logs");
     if (logs) {
         logs.innerHTML = d.slice(-5).map(x =>
             `${x.time} - ${x.status}`
         ).join("<br>");
     }
-}
 
+    // update graph LAST
+    loadTrafficGraph();
+}
 // ALERTS
 async function loadAlerts(){
     let r=await fetch("/incidents");
