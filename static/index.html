@@ -187,7 +187,33 @@ td button:last-child {
     overflow-y: auto;
     overflow-x: hidden;   
 }
+    
+.attack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+}
 
+.attack-box {
+    background: #1e293b;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 5px solid #3b82f6;
+}
+
+.attack-box h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #cbd5f5;
+}
+
+.attack-box p {
+    margin: 6px 0 0;
+    font-size: 18px;
+    font-weight: bold;
+}
+    
 /* ===== GRAPH ===== */
 .traffic-graph {
     flex: 1;
@@ -396,7 +422,10 @@ td button:last-child {
 <div id="traffic" class="page hidden">
 
 <h2>📡 Traffic Analysis</h2>
-
+<div class="card">
+    <h3>🧠 Traffic Distribution</h3>
+    <div id="attackSummary" class="attack-grid"></div>
+</div>
 <div class="traffic-container">
 
     <!-- LEFT: TABLE -->
@@ -410,6 +439,7 @@ td button:last-child {
                     <tr>
                         <th>Time</th>
                         <th>IP</th>
+                        <th>Location</th>
                         <th>Status</th>
                         <th>Score</th>
                         <th>Action</th>
@@ -647,9 +677,30 @@ async function loadTrafficGraph() {
     let data = globalData;
     if (!data || data.length === 0) return;
 
-    let labels, scores;
+    let labels = [];
+    let scores = [];
 
-    if (currentType === "histogram") {
+    // =========================
+    // 🟢 PIE → LOCATION + STATUS
+    // =========================
+    if (currentType === "pie") {
+
+        let counts = {};
+
+        data.forEach(d => {
+            let loc = d.location || "Unknown";
+            let key = `${loc} - ${d.status}`;
+            counts[key] = (counts[key] || 0) + 1;
+        });
+
+        labels = Object.keys(counts);
+        scores = Object.values(counts);
+    }
+
+    // =========================
+    // 📊 HISTOGRAM
+    // =========================
+    else if (currentType === "histogram") {
 
         let bins = [0, 0, 0, 0, 0];
 
@@ -664,48 +715,80 @@ async function loadTrafficGraph() {
 
         labels = ["0-0.2", "0.2-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"];
         scores = bins;
+    }
 
-    } else {
+    // =========================
+    // 📈 BAR / LINE (unchanged)
+    // =========================
+    else {
 
         let last = data.slice(-20);
         labels = last.map(d => d.time);
         scores = last.map(d => d.final);
-
     }
 
     let ctx = document.getElementById("trafficChart");
     if (!ctx) return;
 
-    //  UPDATE EXISTING CHART (NO DESTROY)
+    // =========================
+    // 🎨 COLOR LOGIC
+    // =========================
+    function getColor(label, score) {
+
+        // pie → color by status
+        if (currentType === "pie") {
+            if (label.includes("ATTACK")) return "#ef4444";
+            if (label.includes("SUSPICIOUS")) return "#f59e0b";
+            return "#22c55e";
+        }
+
+        // others → color by score
+        if (score > 0.7) return "#ef4444";
+        if (score > 0.4) return "#f59e0b";
+        return "#22c55e";
+    }
+
+    let bgColors = currentType === "pie"
+        ? labels.map(l => getColor(l))
+        : scores.map(s => getColor(null, s));
+
+    // =========================
+    //  UPDATE EXISTING
+    // =========================
     if (trafficChart) {
         trafficChart.config.type = currentType === "histogram" ? "bar" : currentType;
+
         trafficChart.data.labels = labels;
         trafficChart.data.datasets[0].data = scores;
+        trafficChart.data.datasets[0].backgroundColor = bgColors;
 
-        trafficChart.data.datasets[0].backgroundColor =
-            currentType === "histogram"
-                ? "#3b82f6"
-                : scores.map(s =>
-                    s > 0.7 ? "#ef4444" :
-                    s > 0.4 ? "#f59e0b" :
-                    "#22c55e"
-                );
+        trafficChart.data.datasets[0].label =
+            currentType === "pie"
+                ? "Attack Distribution"
+                : currentType === "histogram"
+                    ? "Score Distribution"
+                    : "Traffic Score";
 
         trafficChart.update();
         return;
     }
 
-    //  CREATE ONLY ONCE
+    // =========================
+    //  CREATE CHART
+    // =========================
     trafficChart = new Chart(ctx, {
         type: currentType === "histogram" ? "bar" : currentType,
         data: {
             labels: labels,
             datasets: [{
-                label: currentType === "histogram"
-                    ? "Score Distribution"
-                    : "Traffic Score",
+                label: currentType === "pie"
+                    ? "Attack Distribution"
+                    : currentType === "histogram"
+                        ? "Score Distribution"
+                        : "Traffic Score",
+
                 data: scores,
-                backgroundColor: "#22c55e",
+                backgroundColor: bgColors,
                 borderColor: "#22c55e",
                 fill: currentType === "line"
             }]
@@ -714,11 +797,26 @@ async function loadTrafficGraph() {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
+
             plugins: {
                 legend: {
-                    labels: { color: "#cbd5f5" }
+                    labels: {
+                        color: "#cbd5f5",
+
+                        //  FIX legend labels + colors
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            return data.labels.map((label, i) => ({
+                                text: label,
+                                fillStyle: data.datasets[0].backgroundColor[i],
+                                strokeStyle: data.datasets[0].backgroundColor[i],
+                                index: i
+                            }));
+                        }
+                    }
                 }
             },
+
             scales: currentType === "pie" ? {} : {
                 y: {
                     beginAtZero: true,
@@ -767,6 +865,21 @@ async function allowIP(ip) {
     
 // DATA
 let globalData = [];
+let ipCache = {}; //  cache to avoid repeated API calls
+
+async function getLocation(ip) {
+    if (ipCache[ip]) return ipCache[ip];
+
+    try {
+        let res = await fetch(`https://ipapi.co/${ip}/json/`);
+        let data = await res.json();
+        let loc = data.country_name || "Unknown";
+        ipCache[ip] = loc;
+        return loc;
+    } catch {
+        return "Unknown";
+    }
+}
 
 async function loadData(){
     let r = await fetch("/data");
@@ -779,12 +892,29 @@ async function loadData(){
     let html = "";
     let attack = 0;
 
+    //  attack summary counter
+    let counts = {};
+
+    //  fetch locations (parallel for speed)
+    await Promise.all(d.map(async (x) => {
+        if (!x.location) {
+            x.location = await getLocation(x.ip);
+        }
+    }));
+
     d.forEach(x => {
+
+        // count ATTACK (your original logic)
         if (x.status === "ATTACK") attack++;
+
+        //  count ALL types dynamically
+        let type = x.attack_type || x.status;
+        counts[type] = (counts[type] || 0) + 1;
 
         html += `<tr>
         <td>${x.time}</td>
         <td>${x.ip}</td>
+        <td>${x.location}</td> <!-- 🌍 NEW -->
         <td class="${x.status}">${x.status}</td>
         <td>${x.final.toFixed(3)}</td>
         <td>
@@ -797,11 +927,11 @@ async function loadData(){
     //  update table
     document.getElementById("table").innerHTML = html;
 
-    //  update stats
+    //  update stats (unchanged)
     document.getElementById("total").innerText = d.length;
     document.getElementById("attacks").innerText = attack;
 
-    // security bar (only if exists)
+    //  security bar
     let securityScore = 1 - (attack / d.length);
     let percent = Math.round(securityScore * 100);
 
@@ -811,7 +941,7 @@ async function loadData(){
     if (bar) bar.style.width = percent + "%";
     if (text) text.innerText = percent + "% Secure";
 
-    // optional logs (only if exists)
+    //  logs
     let logs = document.getElementById("logs");
     if (logs) {
         logs.innerHTML = d.slice(-5).map(x =>
@@ -819,7 +949,28 @@ async function loadData(){
         ).join("<br>");
     }
 
-    // update graph LAST
+    // ===============================
+    // 🔥 NEW: ATTACK SUMMARY UI
+    // ===============================
+    let summaryHTML = "";
+    let total = d.length || 1;
+
+    for (let type in counts) {
+        let count = counts[type];
+        let percent = Math.round((count / total) * 100);
+
+        summaryHTML += `
+            <div class="attack-box">
+                <h4>${type}</h4>
+                <p>${count} (${percent}%)</p>
+            </div>
+        `;
+    }
+
+    let summaryDiv = document.getElementById("attackSummary");
+    if (summaryDiv) summaryDiv.innerHTML = summaryHTML;
+
+    //  update graph LAST
     loadTrafficGraph();
 }
 // ALERTS
