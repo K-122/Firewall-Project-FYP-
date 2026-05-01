@@ -132,6 +132,49 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
     gap: 10px;                 
 }
 
+.modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-content {
+    background: #0f172a;
+    padding: 20px;
+    width: 360px;
+    border-radius: 10px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+#blockedList {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.blocked-item {
+    display: flex;
+    justify-content: space-between;
+    background: #1e293b;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
+.hidden {
+    display: none;
+}
+
 /* ===== TABLE BASE ===== */
 table {
     width: 100%;
@@ -563,6 +606,30 @@ td button:last-child {
 
 </div>
 
+<!-- ========================= -->
+<!-- 🚫 BLOCKED IP MODAL -->
+<!-- ========================= -->
+<div id="blockedModal" class="modal hidden">
+
+    <div class="modal-content">
+
+        <!-- HEADER -->
+        <div class="modal-header">
+            <button onclick="closeBlocked()" class="btn">← Back</button>
+            <button onclick="loadBlocked()" class="btn">🔄 Refresh</button>
+        </div>
+
+        <!-- TITLE -->
+        <h3>🚫 Blocked IP List</h3>
+
+        <!-- LIST CONTAINER -->
+        <div id="blockedList">
+            <!-- dynamic content here -->
+        </div>
+
+    </div>
+</div>
+
 <script>
 let systemActive = false;
 let mainLoop = null;
@@ -887,10 +954,10 @@ async function blockIP(ip) {
         return;
     }
 
-    alert("🚫 Blocked: " + ip);
-
-    // 🔥 open popup + refresh
+    // ✅ OPEN MODAL
     document.getElementById("blockedModal").classList.remove("hidden");
+
+    // ✅ LOAD DATA
     loadBlocked();
 }
 
@@ -1147,6 +1214,31 @@ async function loadIncidentsPage() {
     </div>
 `;
     });
+}
+
+async function loadBlocked() {
+
+    let res = await fetch("/blocked");
+    let data = await res.json();
+
+    let box = document.getElementById("blockedList");
+    box.innerHTML = "";
+
+    for (let ip of data) {
+
+        let location = await getLocation(ip);
+
+        box.innerHTML += `
+            <div class="blocked-item">
+                <span>${ip}</span>
+                <span style="color:#94a3b8;">[${location}]</span>
+            </div>
+        `;
+    }
+}
+
+function closeBlocked() {
+    document.getElementById("blockedModal").classList.add("hidden");
 }
     
 // LOOP
