@@ -718,7 +718,7 @@ async function loadTrafficGraph() {
     }
 
     // =========================
-    // 📈 BAR / LINE (unchanged)
+    // 📈 BAR / LINE
     // =========================
     else {
 
@@ -735,14 +735,12 @@ async function loadTrafficGraph() {
     // =========================
     function getColor(label, score) {
 
-        // pie → color by status
         if (currentType === "pie") {
-            if (label.includes("ATTACK")) return "#ef4444";
-            if (label.includes("SUSPICIOUS")) return "#f59e0b";
-            return "#22c55e";
+            if (label.includes("ATTACK")) return "#ef4444";       // red
+            if (label.includes("SUSPICIOUS")) return "#f59e0b";   // orange
+            return "#22c55e";                                     // green
         }
 
-        // others → color by score
         if (score > 0.7) return "#ef4444";
         if (score > 0.4) return "#f59e0b";
         return "#22c55e";
@@ -753,9 +751,10 @@ async function loadTrafficGraph() {
         : scores.map(s => getColor(null, s));
 
     // =========================
-    //  UPDATE EXISTING
+    // 🔄 UPDATE EXISTING CHART
     // =========================
     if (trafficChart) {
+
         trafficChart.config.type = currentType === "histogram" ? "bar" : currentType;
 
         trafficChart.data.labels = labels;
@@ -774,7 +773,7 @@ async function loadTrafficGraph() {
     }
 
     // =========================
-    //  CREATE CHART
+    // 🆕 CREATE CHART
     // =========================
     trafficChart = new Chart(ctx, {
         type: currentType === "histogram" ? "bar" : currentType,
@@ -798,32 +797,59 @@ async function loadTrafficGraph() {
             maintainAspectRatio: false,
             animation: false,
 
-            plugins: {
-                legend: {
-                    labels: {
-                        color: "#cbd5f5",
-
-                        //  FIX legend labels + colors
-                        generateLabels: function(chart) {
-                            const data = chart.data;
-                            return data.labels.map((label, i) => ({
-                                text: label,
-                                fillStyle: data.datasets[0].backgroundColor[i],
-                                strokeStyle: data.datasets[0].backgroundColor[i],
-                                index: i
-                            }));
-                        }
-                    }
+            layout: {
+                padding: {
+                    top: 20,
+                    bottom: 30   //  space for labels
                 }
             },
 
+            plugins: {
+
+                // ✅ legend only for pie
+                legend: {
+                    display: currentType === "pie",
+                    labels: {
+                        color: "#ffffff",
+                        font: {
+                            size: 1,
+                            weight: "500"
+                        }
+                    }
+                },
+
+                // ✅ tooltip style
+                tooltip: {
+                    titleColor: "#ffffff",
+                    bodyColor: "#e6edf3",
+                    backgroundColor: "#111827",
+                    borderColor: "#374151",
+                    borderWidth: 1
+                }
+            },
+
+            // ✅ axis only for non-pie
             scales: currentType === "pie" ? {} : {
                 y: {
                     beginAtZero: true,
-                    ticks: { color: "#94a3b8" }
+                    ticks: {
+                        color: "#e6edf3",
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: "rgba(255,255,255,0.05)"
+                    }
                 },
                 x: {
-                    ticks: { color: "#94a3b8" }
+                    ticks: {
+                        color: "#e6edf3",
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: "rgba(255,255,255,0.05)"
+                    }
                 }
             }
         }
@@ -865,23 +891,42 @@ async function allowIP(ip) {
     
 // DATA
 let globalData = [];
-let ipCache = {}; //  cache to avoid repeated API calls
+let ipCache = {};  // ✅ cache to avoid repeated API calls
+
+// =========================
+// 🌍 IP GEOLOCATION
+// =========================
+function isPrivateIP(ip) {
+    return ip.startsWith("192.168.") ||
+           ip.startsWith("10.") ||
+           ip.startsWith("172.");
+}
 
 async function getLocation(ip) {
+
+    if (isPrivateIP(ip)) return "Local Network";
+
     if (ipCache[ip]) return ipCache[ip];
 
     try {
         let res = await fetch(`https://ipapi.co/${ip}/json/`);
         let data = await res.json();
-        let loc = data.country_name || "Unknown";
-        ipCache[ip] = loc;
-        return loc;
+
+        let location = data.country_name || "Unknown";
+
+        ipCache[ip] = location;
+        return location;
+
     } catch {
         return "Unknown";
     }
 }
 
+// =========================
+// 📊 LOAD DATA
+// =========================
 async function loadData(){
+
     let r = await fetch("/data");
     let d = await r.json();
 
@@ -892,29 +937,34 @@ async function loadData(){
     let html = "";
     let attack = 0;
 
-    //  attack summary counter
+    // =========================
+    // 🧠 COUNT TYPES
+    // =========================
     let counts = {};
 
-    //  fetch locations (parallel for speed)
+    // =========================
+    // 🌍 GET LOCATIONS (FAST)
+    // =========================
     await Promise.all(d.map(async (x) => {
         if (!x.location) {
             x.location = await getLocation(x.ip);
         }
     }));
 
+    // =========================
+    // 📋 BUILD TABLE
+    // =========================
     d.forEach(x => {
 
-        // count ATTACK (your original logic)
         if (x.status === "ATTACK") attack++;
 
-        //  count ALL types dynamically
         let type = x.attack_type || x.status;
         counts[type] = (counts[type] || 0) + 1;
 
         html += `<tr>
         <td>${x.time}</td>
         <td>${x.ip}</td>
-        <td>${x.location}</td> <!-- 🌍 NEW -->
+        <td>${x.location}</td>
         <td class="${x.status}">${x.status}</td>
         <td>${x.final.toFixed(3)}</td>
         <td>
@@ -924,14 +974,20 @@ async function loadData(){
         </tr>`;
     });
 
-    //  update table
+    // =========================
+    // 📋 UPDATE TABLE
+    // =========================
     document.getElementById("table").innerHTML = html;
 
-    //  update stats (unchanged)
+    // =========================
+    // 📊 UPDATE STATS
+    // =========================
     document.getElementById("total").innerText = d.length;
     document.getElementById("attacks").innerText = attack;
 
-    //  security bar
+    // =========================
+    // 🔐 SECURITY SCORE
+    // =========================
     let securityScore = 1 - (attack / d.length);
     let percent = Math.round(securityScore * 100);
 
@@ -941,7 +997,9 @@ async function loadData(){
     if (bar) bar.style.width = percent + "%";
     if (text) text.innerText = percent + "% Secure";
 
-    //  logs
+    // =========================
+    // 🧾 LOGS (optional)
+    // =========================
     let logs = document.getElementById("logs");
     if (logs) {
         logs.innerHTML = d.slice(-5).map(x =>
@@ -949,9 +1007,9 @@ async function loadData(){
         ).join("<br>");
     }
 
-    // ===============================
-    // 🔥 NEW: ATTACK SUMMARY UI
-    // ===============================
+    // =========================
+    // 🧠 ATTACK SUMMARY (TOP UI)
+    // =========================
     let summaryHTML = "";
     let total = d.length || 1;
 
@@ -970,9 +1028,12 @@ async function loadData(){
     let summaryDiv = document.getElementById("attackSummary");
     if (summaryDiv) summaryDiv.innerHTML = summaryHTML;
 
-    //  update graph LAST
+    // =========================
+    // 📊 UPDATE GRAPH LAST
+    // =========================
     loadTrafficGraph();
 }
+    
 // ALERTS
 async function loadAlerts(){
     let r=await fetch("/incidents");
