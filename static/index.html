@@ -172,14 +172,13 @@ td button:last-child {
 /* ===== LAYOUT ===== */
 .traffic-container {
     display: flex;
-    gap: 16px;
-    align-items: flex-start;
+    flex-direction: column;   /* 🔥 THIS IS KEY */
+    gap: 20px;
 }
 
 /* ===== TABLE ===== */
 .traffic-table {
-    flex: 2;
-    min-width: 0;
+    width: 100%;
 }
 
 .table-wrapper {
@@ -216,8 +215,7 @@ td button:last-child {
     
 /* ===== GRAPH ===== */
 .traffic-graph {
-    flex: 1;
-    max-width: 400px;
+    width: 60%;
 }
 
 /* graph header */
@@ -229,7 +227,7 @@ td button:last-child {
 
 /* FIX GRAPH SIZE (IMPORTANT) */
 .graph-box {
-    height: 240px;
+    height: 340px;
 }
 
 /* prevent chart jumping */
@@ -558,7 +556,9 @@ td button:last-child {
 </div>
 
 <script>
-
+let systemActive = false;
+let mainLoop = null;
+    
 // PAGE SWITCH
 function showPage(p){
     document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
@@ -600,23 +600,30 @@ async function loadIP(){
 loadIP();
 
 // SCAN
-let timer=0, interval;
-
 function startScan(){
-    timer=0;
-    document.getElementById("status").innerText="Running";
 
-    interval=setInterval(()=>{
-        timer++;
-        document.getElementById("elapsed").innerText=timer;
-        addLog("Scanning...");
-    },1000);
+    systemActive = true;
+
+    document.getElementById("status").innerText = "Running";
+
+    startMainLoop();   // 🔥 start system loop
 }
 
 function stopScan(){
-    clearInterval(interval);
-    document.getElementById("status").innerText="Stopped";
-    addLog("Stopped");
+
+    systemActive = false;
+
+    // 🔥 STOP LOOP
+    if (mainLoop) {
+        clearInterval(mainLoop);
+        mainLoop = null;
+    }
+
+    document.getElementById("status").innerText = "Stopped";
+
+    // 🔥 STOP GRAPH UPDATE
+    if (trafficChart) trafficChart.stop();
+    if (chart) chart.stop();
 }
 
 function addLog(msg){
@@ -812,7 +819,7 @@ async function loadTrafficGraph() {
                     labels: {
                         color: "#ffffff",
                         font: {
-                            size: 1,
+                            size: 12,
                             weight: "500"
                         }
                     }
@@ -857,37 +864,56 @@ async function loadTrafficGraph() {
 }
 
 async function blockIP(ip) {
-    try {
-        let res = await fetch(`/block/${encodeURIComponent(ip)}`, {
-            method: "POST"
-        });
 
-        if (!res.ok) {
-            throw new Error("Server error");
-        }
-
-        alert("🚫 Blocked: " + ip);
-
-    } catch (err) {
-        alert("❌ Failed to block IP");
-        console.error(err);
+    if (!systemActive) {
+        alert("⚠ System is stopped");
+        return;
     }
+
+    let res = await fetch(`/block/${encodeURIComponent(ip)}`, {
+        method: "POST"
+    });
+
+    if (!res.ok) {
+        alert("❌ Failed to block");
+        return;
+    }
+
+    alert("🚫 Blocked: " + ip);
+
+    // 🔥 open popup + refresh
+    document.getElementById("blockedModal").classList.remove("hidden");
+    loadBlocked();
 }
 
 async function allowIP(ip) {
-    await fetch(`/allow/${encodeURIComponent(ip)}`, { method: "POST" });
-    alert("✅ Allowed: " + ip);
-}
 
+    if (!systemActive) {
+        alert("⚠ System is stopped");
+        return;
+    }
+
+    await fetch(`/allow/${encodeURIComponent(ip)}`, {
+        method: "POST"
+    });
+
+    alert("✅ Allowed: " + ip);
+
+    // 🔥 refresh blocked list (in case removed)
+    loadBlocked();
+}
+    
 async function quarantineIP(ip) {
+
+    if (!systemActive) {
+        alert("⚠ System is stopped");
+        return;
+    }
+
     await fetch(`/quarantine/${encodeURIComponent(ip)}`, { method: "POST" });
     alert("🛡️ Quarantined: " + ip);
 }
 
-async function allowIP(ip) {
-    await fetch(`/allow/${ip}`, { method: "POST" });
-    alert("✅ Allowed: " + ip);
-}
     
 // DATA
 let globalData = [];
@@ -961,17 +987,19 @@ async function loadData(){
         let type = x.attack_type || x.status;
         counts[type] = (counts[type] || 0) + 1;
 
-        html += `<tr>
-        <td>${x.time}</td>
-        <td>${x.ip}</td>
-        <td>${x.location}</td>
-        <td class="${x.status}">${x.status}</td>
-        <td>${x.final.toFixed(3)}</td>
-        <td>
-            <button onclick="blockIP('${x.ip}')" class="btn stop">Deny</button>
-            <button onclick="allowIP('${x.ip}')" class="btn start">Allow</button>
-        </td>
-        </tr>`;
+    html += `<tr>
+    <td>${x.time}</td>
+    <td>${x.ip}</td>
+    <td>${x.location}</td>
+    <td class="${x.status}">${x.status}</td>
+    <td>${x.final.toFixed(3)}</td>
+    
+    <td>
+        <button onclick="blockIP('${x.ip}')" class="btn stop">Deny</button>
+        <button onclick="allowIP('${x.ip}')" class="btn start">Allow</button>
+    </td>
+    
+    </tr>`;  
     });
 
     // =========================
@@ -1114,21 +1142,29 @@ async function loadIncidentsPage() {
 }
     
 // LOOP
-setInterval(() => {
+function startMainLoop() {
 
-    let active = document.querySelector(".page:not(.hidden)");
+    // prevent multiple loops
+    if (mainLoop) return;
 
-    loadData();
+    mainLoop = setInterval(() => {
 
-    if (active && active.id === "dashboard") {
-        loadGraph();
-    }
+        if (!systemActive) return;   // 🚫 STOP everything
 
-    if (active && active.id === "traffic") {
-        loadTrafficGraph();
-    }
+        let active = document.querySelector(".page:not(.hidden)");
 
-}, 2000);
+        loadData();
+
+        if (active && active.id === "dashboard") {
+            loadGraph();
+        }
+
+        if (active && active.id === "traffic") {
+            loadTrafficGraph();
+        }
+
+    }, 2000);
+}
 
 </script>
 
