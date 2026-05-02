@@ -175,6 +175,47 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
     display: none;
 }
 
+.action-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-card .btn {
+    width: 100%;
+    text-align: center;
+}
+
+#blockedPanel {
+    background: #111827;
+    padding: 12px;
+    border-radius: 10px;
+}
+
+/* header buttons */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+/* list */
+#blockedListInline {
+    margin-top: 10px;
+}
+
+/* each item */
+.blocked-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1e293b;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
 /* ===== TABLE BASE ===== */
 table {
     width: 100%;
@@ -314,6 +355,25 @@ td button:last-child {
     border-left:4px solid red;
 }
 
+.incident-main {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* LEFT timeline */
+.timeline-card {
+    flex: 2;
+}
+
+/* RIGHT side (actions + blocked) */
+.right-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
 /* ===== TOP LAYOUT ===== */
 .incident-top {
     display: flex;
@@ -321,12 +381,11 @@ td button:last-child {
     margin-bottom: 20px;
 }
 
-/* side cards */
 .small-card {
     flex: 1;
+    text-align: center;
 }
 
-/* center vector bigger */
 .vector-card {
     flex: 2;
 }
@@ -339,11 +398,10 @@ td button:last-child {
     margin-top: 10px;
 }
 
-/* nodes */
 .node {
     text-align: center;
-    color: #94a3b8;
     font-size: 13px;
+    color: #94a3b8;
 }
 
 .node img {
@@ -352,12 +410,10 @@ td button:last-child {
     margin-bottom: 6px;
 }
 
-/* active (highlight attack stage) */
 .node.active img {
     filter: drop-shadow(0 0 6px #ef4444);
 }
 
-/* connecting lines */
 .line {
     flex: 1;
     height: 2px;
@@ -367,21 +423,26 @@ td button:last-child {
 
 /* ===== TIMELINE ===== */
 #timeline {
-    max-height: 300px;
+    max-height: 350px;
     overflow-y: auto;
 }
 
 .timeline-item {
-    padding: 10px;
-    border-left: 3px solid #22c55e;
-    margin-bottom: 10px;
     background: #0f172a;
-    border-radius: 6px;
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 4px solid #22c55e;
+    margin-bottom: 10px;
 }
 
-/* highlight attack */
+/* attack highlight */
 .timeline-item.attack {
     border-left-color: #ef4444;
+}
+
+/* suspicious highlight */
+.timeline-item.suspicious {
+    border-left-color: #f59e0b;
 }
 
 /* ===== ACTION BUTTONS ===== */
@@ -582,28 +643,45 @@ td button:last-child {
             <div id="timeline"></div>
         </div>
 
-        <!-- RIGHT: ACTIONS -->
-        <div class="card action-card">
-            <h3>⚙️ Actions</h3>
+        <!-- RIGHT SIDE -->
+        <div class="right-side">
 
-            <button class="btn stop"
-                onclick="blockIP(document.getElementById('incidentIP').innerText)">
-                🚫 Block IP
-            </button>
+            <!-- ACTION CARD -->
+            <div class="card action-card">
+                <h3>⚙️ Actions</h3>
 
-            <button class="btn" onclick="retrainModel()">
-                🔄 Retrain Model
-            </button>
+                <button class="btn stop"
+                    onclick="blockIP(document.getElementById('incidentIP').innerText)">
+                    🚫 Block IP
+                </button>
 
-            <button class="btn start"
-                onclick="quarantineIP(document.getElementById('incidentIP').innerText)">
-                🛡️ Quarantine
-            </button>
+                <button class="btn" onclick="retrainModel()">
+                    🔄 Retrain Model
+                </button>
+
+                <button class="btn start"
+                    onclick="quarantineIP(document.getElementById('incidentIP').innerText)">
+                    🛡️ Quarantine
+                </button>
+            </div>
+
+            <!-- 🔥 BLOCKED PANEL -->
+            <div id="blockedPanel" class="card hidden">
+
+                <div class="panel-header">
+                    <button onclick="closeBlockedInline()" class="btn">← Back</button>
+                    <button onclick="loadBlockedInline()" class="btn">🔄 Refresh</button>
+                </div>
+
+                <h3>🚫 Blocked IP List</h3>
+
+                <div id="blockedListInline"></div>
+
+            </div>
 
         </div>
 
     </div>
-
 </div>
 
 <!-- ========================= -->
