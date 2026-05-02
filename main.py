@@ -236,6 +236,17 @@ def api_allow(ip: str):
 
     return {"status": "allowed", "ip": ip}
 
+@app.post("/retrain")
+def retrain_model():
+    print("🔄 Retraining AI model...")
+
+    # simulate training time
+    import time
+    time.sleep(2)
+
+    print("✅ Model updated")
+
+    return {"status": "retrained"}
 
 @app.post("/quarantine/{ip}")
 def api_quarantine(ip: str):
