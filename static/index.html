@@ -1318,6 +1318,35 @@ async function loadBlocked() {
 function closeBlocked() {
     document.getElementById("blockedModal").classList.add("hidden");
 }
+
+async function retrainModel() {
+
+    if (!systemActive) {
+        alert("⚠ System is stopped");
+        return;
+    }
+
+    // 🔥 show loading
+    alert("🔄 Retraining AI model...");
+
+    try {
+        let res = await fetch("/retrain", {
+            method: "POST"
+        });
+
+        if (!res.ok) {
+            throw new Error("Failed");
+        }
+
+        let result = await res.json();
+
+        alert("✅ Model retrained successfully!");
+        console.log(result);
+
+    } catch (e) {
+        alert("❌ Retrain failed (backend not implemented)");
+    }
+}
     
 // LOOP
 function startMainLoop() {
