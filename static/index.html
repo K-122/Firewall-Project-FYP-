@@ -860,10 +860,24 @@ function stopScan(){
     document.getElementById("status").innerText = "Stopped";
 
     // 🔥 STOP GRAPH UPDATE
-    if (trafficChart) trafficChart.stop();
-    if (chart) chart.stop();
+    if (trafficChart) {
+    trafficChart.destroy();
+    trafficChart = null;
 }
 
+if (chart) {
+    chart.destroy();
+    chart = null;
+}
+
+function loadBlockedInline() {
+    loadBlocked();
+}
+
+function closeBlockedInline() {
+    document.getElementById("blockedPanel").classList.add("hidden");
+}
+    
 function addLog(msg){
     let box=document.getElementById("logs");
     box.innerHTML+=msg+"<br>";
@@ -1515,7 +1529,9 @@ function startMainLoop() {
 
     }, 2000);
 }
-
+loadData();
+startScan();
+    
 </script>
 
 </body>
