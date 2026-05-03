@@ -745,8 +745,8 @@ td button:last-child {
             <div id="blockedPanel" class="card hidden">
 
                 <div class="panel-header">
-                    <button onclick="closeBlockedInline()" class="btn">← Back</button>
-                    <button onclick="loadBlockedInline()" class="btn">🔄 Refresh</button>
+                    <button onclick="closeBlocked()" class="btn">← Back</button>
+                    <button onclick="loadBlocked()" class="btn">🔄 Refresh</button>
                 </div>
 
                 <h3>🚫 Blocked IP List</h3>
@@ -1163,20 +1163,35 @@ async function blockIP(ip) {
         return;
     }
 
-    let res = await fetch(`/block/${encodeURIComponent(ip)}`, {
-        method: "POST"
-    });
+    try {
+        let res = await fetch(`/block/${encodeURIComponent(ip)}`, {
+            method: "POST"
+        });
 
-    if (!res.ok) {
-        alert("❌ Failed to block");
-        return;
+        if (!res.ok) {
+            throw new Error("Failed");
+        }
+
+        alert("🚫 Blocked: " + ip);
+
+        // ✅ OPEN MODAL (Traffic page)
+        let modal = document.getElementById("blockedModal");
+
+        if (modal.classList.contains("hidden")) {
+            modal.classList.remove("hidden");
+        }
+
+        // ✅ LOAD BLOCKED LIST
+        loadBlocked();
+
+        // ✅ ALSO UPDATE INLINE PANEL (incident page)
+        if (document.getElementById("blockedPanel")) {
+            loadBlockedInline();
+        }
+
+    } catch (e) {
+        alert("❌ Failed to block IP");
     }
-
-    // ✅ OPEN MODAL
-    document.getElementById("blockedModal").classList.remove("hidden");
-
-    // ✅ LOAD DATA
-    loadBlocked();
 }
 
 async function allowIP(ip) {
@@ -1357,21 +1372,27 @@ async function loadData(){
     
 // ALERTS
 async function loadAlerts(){
-    let r=await fetch("/incidents");
-    let d=await r.json();
 
-    let box=document.getElementById("alerts");
-    let list=document.getElementById("incidentList");
+    let r = await fetch("/incidents");
+    let d = await r.json();
 
-    box.innerHTML="";
-    list.innerHTML="";
+    let box = document.getElementById("alerts");
 
-    d.slice(-3).forEach(a=>{
-        box.innerHTML+=`<div class="alert">⚠ ${a.ip}</div>`;
-    });
+    if (!box) return;
 
-    d.forEach(a=>{
-        list.innerHTML+=`<div class="alert">${a.ip} - ${a.status}</div>`;
+    box.innerHTML = "";
+
+    if (!d || d.length === 0) {
+        box.innerHTML = "<p style='color:#64748b;'>No alerts</p>";
+        return;
+    }
+
+    d.slice(-5).reverse().forEach(a => {
+        box.innerHTML += `
+            <div class="alert">
+                ⚠ ${a.ip} (${a.status})
+            </div>
+        `;
     });
 }
 
@@ -1450,49 +1471,77 @@ async function loadIncidentsPage() {
 
 async function loadBlocked() {
 
-    let res = await fetch("/blocked");
-    let data = await res.json();
+    try {
+        let res = await fetch("/blocked");
+        let data = await res.json();
 
-    let box = document.getElementById("blockedList");
-    box.innerHTML = "";
+        let box = document.getElementById("blockedList");
+        if (!box) return;
 
-    for (let ip of data) {
+        box.innerHTML = "";
 
-        let location = await getLocation(ip);
+        if (!data || data.length === 0) {
+            box.innerHTML = "<p style='color:#64748b;'>No blocked IP</p>";
+            return;
+        }
 
-        box.innerHTML += `
-            <div class="blocked-item">
-                <span>${ip}</span>
-                <span style="color:#94a3b8;">[${location}]</span>
-            </div>
-        `;
+        // 🚀 PARALLEL location fetch
+        let locations = await Promise.all(
+            data.map(ip => getLocation(ip).catch(() => "Unknown"))
+        );
+
+        data.forEach((ip, i) => {
+            box.innerHTML += `
+                <div class="blocked-item">
+                    <span>${ip}</span>
+                    <span style="color:#94a3b8;">[${locations[i]}]</span>
+                </div>
+            `;
+        });
+
+    } catch (err) {
+        console.error(err);
     }
 }
 
+function closeBlocked(){
+    let modal = document.getElementById("blockedModal");
+    if (modal) modal.classList.add("hidden");
+}
+
 function closeBlockedInline(){
-    document.getElementById("blockedPanel").classList.add("hidden");
+    let panel = document.getElementById("blockedPanel");
+    if (panel) panel.classList.add("hidden");
 }
 
 async function loadBlockedInline(){
 
     document.getElementById("blockedPanel").classList.remove("hidden");
 
-    let res = await fetch("/blocked");
-    let data = await res.json();
+    try {
+        let res = await fetch("/blocked");
+        let data = await res.json();
 
-    let box = document.getElementById("blockedListInline");
-    box.innerHTML = "";
+        let box = document.getElementById("blockedListInline");
+        if (!box) return;
 
-    for (let ip of data) {
+        box.innerHTML = "";
 
-        let location = await getLocation(ip);
+        let locations = await Promise.all(
+            data.map(ip => getLocation(ip).catch(() => "Unknown"))
+        );
 
-        box.innerHTML += `
-            <div class="blocked-item">
-                <span>${ip}</span>
-                <span style="color:#94a3b8;">[${location}]</span>
-            </div>
-        `;
+        data.forEach((ip, i) => {
+            box.innerHTML += `
+                <div class="blocked-item">
+                    <span>${ip}</span>
+                    <span style="color:#94a3b8;">[${locations[i]}]</span>
+                </div>
+            `;
+        });
+
+    } catch (err) {
+        console.error(err);
     }
 }
 
@@ -1538,7 +1587,8 @@ function startMainLoop() {
         let active = document.querySelector(".page:not(.hidden)");
 
         loadData();
-
+        loadAlerts();
+        
         if (active && active.id === "dashboard") {
             loadGraph();
         }
