@@ -667,16 +667,13 @@ td button:last-child {
     <!-- ===== TOP SECTION ===== -->
     <div class="incident-top">
 
-        <!-- LEFT -->
         <div class="card small-card">
             <h4>🌐 Source IP</h4>
             <p id="incidentIP">-</p>
         </div>
 
-        <!-- CENTER -->
         <div class="card vector-card">
             <h4>⚡ Attack Vector</h4>
-
             <div class="vector-flow">
                 <div class="node">
                     <img src="/static/gateway.png">
@@ -699,7 +696,6 @@ td button:last-child {
             </div>
         </div>
 
-        <!-- RIGHT -->
         <div class="card small-card">
             <h4>📊 Confidence</h4>
             <p id="confidence">0%</p>
@@ -707,10 +703,10 @@ td button:last-child {
 
     </div>
 
-    <!-- ===== MAIN SECTION ===== -->
+    <!-- ===== MAIN ===== -->
     <div class="incident-main">
 
-        <!-- LEFT SIDE -->
+        <!-- LEFT -->
         <div class="left-side">
 
             <!-- TIMELINE -->
@@ -719,7 +715,13 @@ td button:last-child {
                 <div id="timeline"></div>
             </div>
 
-            <!-- THREAT ANALYSIS -->
+            <!-- INCIDENT LIST -->
+            <div class="card">
+                <h3>📋 Incident List</h3>
+                <div id="incidentList"></div>
+            </div>
+
+            <!-- THREAT PANEL -->
             <div class="card threat-panel">
                 <h3>⚠ Threat Analysis</h3>
                 <div id="threatContent">
@@ -729,7 +731,7 @@ td button:last-child {
 
         </div>
 
-        <!-- RIGHT SIDE -->
+        <!-- RIGHT -->
         <div class="right-side">
 
             <!-- ACTIONS -->
@@ -1173,6 +1175,77 @@ async function loadTrafficGraph() {
     }
 }
 
+function selectIncident(ip, score, status){
+    // 📌 BASIC INFO
+    document.getElementById("incidentIP").innerText = ip;
+    document.getElementById("confidence").innerText =
+        Math.round(score * 100) + "%";
+
+    
+    // 🧠 DETECT ATTACK TYPE
+    let type = "";
+
+    if (score > 0.85) type = "SQL Injection Attack";
+    else if (score > 0.7) type = "DDoS Attack";
+    else if (score > 0.5) type = "Brute Force Attempt";
+    else if (score > 0.3) type = "Suspicious Activity";
+    else type = "Normal Traffic";
+
+    // 🚨 RISK LEVEL
+    let risk = "";
+    let riskColor = "";
+
+    if (score > 0.7) {
+        risk = "HIGH RISK";
+        riskColor = "#ef4444";
+    } else if (score > 0.4) {
+        risk = "MEDIUM RISK";
+        riskColor = "#f59e0b";
+    } else {
+        risk = "LOW RISK";
+        riskColor = "#22c55e";
+    }
+
+    // ⚠️ IMPACT EXPLANATION
+    let impact = "";
+
+    if (status === "ATTACK") {
+        impact = `
+        If no action is taken:
+        • Unauthorized access may occur
+        • Sensitive financial data could be leaked
+        • System performance may degrade
+        • Potential service disruption (DDoS risk)
+        `;
+    } 
+    else if (status === "SUSPICIOUS") {
+        impact = `
+        Potential risk:
+        • May escalate into a full attack
+        • Repeated probing detected
+        • Requires monitoring or quarantine
+        `;
+    } 
+    else {
+        impact = `
+        No immediate threat detected.
+        Traffic appears normal.
+        `;
+    }
+
+    // 🧾 FINAL OUTPUT
+    document.getElementById("threatContent").innerHTML = `
+        <b style="color:#e2e8f0;">Attack Type:</b> ${type}<br><br>
+
+        <b style="color:${riskColor};">Risk Level:</b> ${risk}<br><br>
+
+        <b style="color:#cbd5f5;">Analysis:</b><br>
+        <div style="margin-top:6px; line-height:1.5;">
+            ${impact.replace(/\n/g,"<br>")}
+        </div>
+    `;
+}
+           
 async function blockIP(ip) {
 
     if (!systemActive) {
@@ -1281,11 +1354,16 @@ async function loadData(){
     // =========================
     // 🌍 GET LOCATIONS (FAST)
     // =========================
-    await Promise.all(d.map(async (x) => {
-        if (!x.location) {
-            x.location = await getLocation(x.ip);
-        }
-    }));
+    for (let x of d) {
+    if (!x.location) {
+        x.location = ipCache[x.ip] || "Loading...";
+
+        getLocation(x.ip).then(loc => {
+            ipCache[x.ip] = loc;
+            x.location = loc;
+        });
+    }
+}
 
     // =========================
     // 📋 BUILD TABLE
@@ -1374,24 +1452,22 @@ async function loadData(){
     
 // ALERTS
 async function loadAlerts(){
-    let r=await fetch("/incidents");
-    let d=await r.json();
+    let r = await fetch("/incidents");
+    let d = await r.json();
 
-    let box=document.getElementById("alerts");
-    let list=document.getElementById("incidentList");
+    let box = document.getElementById("alerts");
+    if (!box) return;
 
-    box.innerHTML="";
-    list.innerHTML="";
+    box.innerHTML = "";
 
     d.slice(-3).forEach(a=>{
-        box.innerHTML+=`<div class="alert">⚠ ${a.ip}</div>`;
-    });
-
-    d.forEach(a=>{
-        list.innerHTML+=`<div class="alert">${a.ip} - ${a.status}</div>`;
+        box.innerHTML += `
+            <div class="alert">
+                ⚠ ${a.ip} (${a.status})
+            </div>`;
     });
 }
-
+    
 function detectAttackType(x) {
 
     if (x.status === "NORMAL") return "LEGITIMATE_TRAFFIC";
@@ -1411,44 +1487,52 @@ async function loadIncidentsPage() {
 
     if (!data.length) return;
 
-    let latest = data[data.length - 1];
-
-    document.getElementById("incidentIP").innerText = latest.ip;
-    document.getElementById("confidence").innerText =
-        Math.round(latest.final * 100) + "%";
-
     let timeline = document.getElementById("timeline");
+    let list = document.getElementById("incidentList");
+
     timeline.innerHTML = "";
+    list.innerHTML = "";
 
-    data.slice(-5).forEach(x => {
+    data.slice(-10).reverse().forEach(x => {
 
-        let cls = "";
-        if (x.status === "ATTACK") cls = "attack";
-        else if (x.status === "SUSPICIOUS") cls = "suspicious";
+        let cls = x.status === "ATTACK"
+            ? "attack"
+            : x.status === "SUSPICIOUS"
+                ? "suspicious"
+                : "";
 
+        // TIMELINE
         timeline.innerHTML += `
-    <div class="timeline-item ${cls}">
-        
-        <div style="font-size:11px; color:#94a3b8;">
-            ${x.time}
-        </div>
+            <div class="timeline-item ${cls}">
+                <div style="font-size:11px;color:#94a3b8;">${x.time}</div>
+                <div style="font-weight:bold;">
+                    ${x.attack_type || detectAttackType(x)}
+                </div>
+                <div>Origin: ${x.ip}</div>
+                <div>Score: ${x.final.toFixed(2)} | ${x.status}</div>
+            </div>
+        `;
 
-        <div style="font-weight:bold; margin-top:4px;">
-            ${x.attack_type || detectAttackType(x)}
-        </div>
+        // INCIDENT LIST (CLICKABLE)
+        list.innerHTML += `
+            <div class="blocked-item"
+                 onclick="selectIncident('${x.ip}', ${x.final}, '${x.status}')">
 
-        <div style="font-size:13px; color:#cbd5f5; margin-top:4px;">
-            Origin: ${x.ip} (${x.location || "Local"})
-        </div>
-
-        <div style="font-size:13px; margin-top:4px;">
-            Score: ${x.final.toFixed(2)} 
-            | Status: ${x.status}
-        </div>
-
-    </div>
-`;
+                     <span>${x.ip}</span>
+                    <span style="color:#f87171;">
+                        ${x.attack_type || detectAttackType(x)}
+                    </span>
+            </div>
+        `;
     });
+
+    // USER SELECTION STAYS
+   let current = document.getElementById("incidentIP").innerText;
+
+if (!current || current === "-") {
+    let latest = data[data.length - 1];
+    selectIncident(latest.ip, latest.final, latest.status);
+    }
 }
 
 async function loadBlocked() {
