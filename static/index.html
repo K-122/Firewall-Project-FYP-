@@ -725,7 +725,9 @@ td button:last-child {
                 <h3>⚙️ Actions</h3>
 
                 <button class="btn stop"
-                    onclick="blockIP(document.getElementById('incidentIP').innerText)">
+                    onclick="blockIP(document.getElementById('incidentIP').innerText);
+                    loadBlockedInline();
+                    ">
                     🚫 Block IP
                 </button>
 
@@ -1115,6 +1117,45 @@ async function loadTrafficGraph() {
     });
 }
 
+function selectIncident(ip, score, status){
+
+    document.getElementById("incidentIP").innerText = ip;
+    document.getElementById("confidence").innerText =
+        Math.round(score * 100) + "%";
+
+    let type = detectAttackType({final: score, status: status});
+
+    let risk = "";
+    if (score > 0.7) risk = "🔴 HIGH RISK";
+    else if (score > 0.4) risk = "🟠 MEDIUM RISK";
+    else risk = "🟢 LOW RISK";
+
+    let msg = "";
+
+    if (status === "ATTACK") {
+        msg = `
+        🚨 Active attack detected.<br>
+        Possible data breach, system compromise, or service disruption.<br>
+        Immediate action required.
+        `;
+    } 
+    else if (status === "SUSPICIOUS") {
+        msg = `
+        ⚠ Suspicious behavior detected.<br>
+        Could escalate into a full attack if not controlled.
+        `;
+    } 
+    else {
+        msg = "✅ Traffic appears normal.";
+    }
+
+    document.getElementById("threatContent").innerHTML = `
+        <b>Type:</b> ${type}<br><br>
+        <b>${risk}</b><br><br>
+        ${msg}
+    `;
+}
+
 async function blockIP(ip) {
 
     if (!systemActive) {
@@ -1348,49 +1389,63 @@ function detectAttackType(x) {
     
 // Incident
 async function loadIncidentsPage() {
+
     let res = await fetch("/incidents");
     let data = await res.json();
 
-    if (!data.length) return;
+    if (!data || data.length === 0) return;
 
     let latest = data[data.length - 1];
 
+    // 📌 UPDATE TOP INFO
     document.getElementById("incidentIP").innerText = latest.ip;
     document.getElementById("confidence").innerText =
         Math.round(latest.final * 100) + "%";
 
+    // 🕒 TIMELINE
     let timeline = document.getElementById("timeline");
     timeline.innerHTML = "";
 
-    data.slice(-5).forEach(x => {
+    data.slice(-10).reverse().forEach(x => {
 
         let cls = "";
         if (x.status === "ATTACK") cls = "attack";
         else if (x.status === "SUSPICIOUS") cls = "suspicious";
 
+        let type = x.attack_type || detectAttackType(x);
+
         timeline.innerHTML += `
-    <div class="timeline-item ${cls}">
-        
-        <div style="font-size:11px; color:#94a3b8;">
-            ${x.time}
-        </div>
+            <div class="timeline-item ${cls}"
+                 onclick="selectIncident('${x.ip}', ${x.final}, '${x.status}')"
+                 style="cursor:pointer;">
 
-        <div style="font-weight:bold; margin-top:4px;">
-            ${x.attack_type || detectAttackType(x)}
-        </div>
+                <div style="font-size:11px; color:#94a3b8;">
+                    ${x.time}
+                </div>
 
-        <div style="font-size:13px; color:#cbd5f5; margin-top:4px;">
-            Origin: ${x.ip} (${x.location || "Local"})
-        </div>
+                <div style="font-weight:bold; margin-top:4px;">
+                    ${type}
+                </div>
 
-        <div style="font-size:13px; margin-top:4px;">
-            Score: ${x.final.toFixed(2)} 
-            | Status: ${x.status}
-        </div>
+                <div style="font-size:13px; color:#cbd5f5; margin-top:4px;">
+                    Origin: ${x.ip} (${x.location || "Local"})
+                </div>
 
-    </div>
-`;
+                <div style="font-size:13px; margin-top:4px;">
+                    Score: ${x.final.toFixed(2)} 
+                    | Status: ${x.status}
+                </div>
+
+            </div>
+        `;
     });
+
+    // 🧠 AUTO SELECT (ONLY FIRST TIME)
+    let current = document.getElementById("incidentIP").innerText;
+
+    if (!current || current === "-") {
+        selectIncident(latest.ip, latest.final, latest.status);
+    }
 }
 
 async function loadBlocked() {
@@ -1414,8 +1469,31 @@ async function loadBlocked() {
     }
 }
 
-function closeBlocked() {
-    document.getElementById("blockedModal").classList.add("hidden");
+function closeBlockedInline(){
+    document.getElementById("blockedPanel").classList.add("hidden");
+}
+
+async function loadBlockedInline(){
+
+    document.getElementById("blockedPanel").classList.remove("hidden");
+
+    let res = await fetch("/blocked");
+    let data = await res.json();
+
+    let box = document.getElementById("blockedListInline");
+    box.innerHTML = "";
+
+    for (let ip of data) {
+
+        let location = await getLocation(ip);
+
+        box.innerHTML += `
+            <div class="blocked-item">
+                <span>${ip}</span>
+                <span style="color:#94a3b8;">[${location}]</span>
+            </div>
+        `;
+    }
 }
 
 async function retrainModel() {
@@ -1469,9 +1547,18 @@ function startMainLoop() {
             loadTrafficGraph();
         }
 
+        if (active && active.id === "incidents") {
+        loadIncidentsPage();  
+        }
+
     }, 2000);
 }
 
+window.onload = () => {
+    loadData();
+    loadAlerts();
+};
+    
 </script>
 
 </body>
