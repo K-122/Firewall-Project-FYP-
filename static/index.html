@@ -9,18 +9,48 @@
 
 <style>
 body {
-    margin:0;
-    font-family:"Segoe UI";
-    color:#e6edf3;
+    margin: 0;
+    font-family: "Segoe UI", sans-serif;
+    color: #e6edf3;
 
-    /*  deep gradient */
-    background: radial-gradient(circle at 20% 20%, #0f172a, #020617 80%);
+    /*  main gradient */
+    background: linear-gradient(
+        135deg,
+        #020617 0%,
+        #020617 30%,
+        #0f172a 60%,
+        #020617 100%
+    );
 
-    /* subtle grid overlay */
+    min-height: 100vh;
+    position: relative;
+    z-index: 0;
+}
+
+/*  GRID LAYER */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;   /*  push behind */
+
     background-image:
         linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+
     background-size: 40px 40px;
+}
+
+/*  GLOW LAYER */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;   /* above grid, below content */
+
+    background:
+        radial-gradient(circle at 20% 20%, rgba(59,130,246,0.15), transparent 60%),
+        radial-gradient(circle at 80% 30%, rgba(139,92,246,0.12), transparent 60%);
 }
 
 /* SIDEBAR */
@@ -375,7 +405,25 @@ td button:last-child {
 .incident-main {
     display: flex;
     gap: 20px;
-    align-items: flex-start;
+}
+
+.left-side {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.right-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.threat-panel {
+    font-size: 13px;
+    color: #94a3b8;
 }
 
 /* LEFT timeline */
@@ -660,6 +708,15 @@ td button:last-child {
             <div id="timeline"></div>
         </div>
 
+        <div class="card threat-panel">
+            <h3>⚠ Threat Analysis</h3>
+            <div id="threatContent">
+                Select an incident to view details...
+            </div>
+        </div>
+
+    </div>
+        
         <!-- RIGHT SIDE -->
         <div class="right-side">
 
