@@ -841,7 +841,6 @@ loadIP();
 function startScan(){
 
     systemActive = true;
-
     document.getElementById("status").innerText = "Running";
 
     startMainLoop();   // 🔥 start system loop
@@ -868,6 +867,7 @@ function stopScan(){
 if (chart) {
     chart.destroy();
     chart = null;
+    }
 }
 
 function loadBlockedInline() {
@@ -1517,8 +1517,11 @@ function startMainLoop() {
 
         let active = document.querySelector(".page:not(.hidden)");
 
+        // ✅ ALWAYS update data
         loadData();
+        loadAlerts();   // 🔥 ADD THIS
 
+        // ✅ PAGE-SPECIFIC UPDATE
         if (active && active.id === "dashboard") {
             loadGraph();
         }
@@ -1527,10 +1530,17 @@ function startMainLoop() {
             loadTrafficGraph();
         }
 
+        if (active && active.id === "incidents") {
+            loadIncidentsPage();   // 🔥 ADD THIS
+        }
+
     }, 2000);
 }
-loadData();
-startScan();
+
+window.onload = () => {
+    loadData();     // initial load
+    startScan();    // start system loop
+};
     
 </script>
 
