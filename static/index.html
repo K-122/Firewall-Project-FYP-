@@ -147,31 +147,23 @@ body::after {
 #timeline {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 350px;
-    overflow-y: auto;
+    gap: 12px;
 }
 
 .timeline-item {
-    background: rgba(30, 41, 59, 0.6);
-    padding: 8px 10px;     /* 🔥 tighter */
+    background: #1e293b;
+    padding: 12px;
     border-radius: 6px;
     border-left: 4px solid #22c55e;
-
-    font-size: 12.5px;
-    line-height: 1.3;
-
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
+    font-size: 14px;
 }
 
 .timeline-item.attack {
-    border-left-color: #ef4444;
+    border-left: 4px solid #ef4444;
 }
 
 .timeline-item.suspicious {
-    border-left-color: #f59e0b;
+    border-left: 4px solid #f59e0b;
 }
 
 /* BUTTON */
@@ -416,14 +408,14 @@ td button:last-child {
 }
 
 .left-side {
-    flex: 1.4;
+    flex: 1.5;
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
 .right-side {
-    flex: 1;
+    flex: 1.3;
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -667,13 +659,16 @@ td button:last-child {
     <!-- ===== TOP SECTION ===== -->
     <div class="incident-top">
 
+        <!-- LEFT -->
         <div class="card small-card">
             <h4>🌐 Source IP</h4>
             <p id="incidentIP">-</p>
         </div>
 
+        <!-- CENTER -->
         <div class="card vector-card">
             <h4>⚡ Attack Vector</h4>
+
             <div class="vector-flow">
                 <div class="node">
                     <img src="/static/gateway.png">
@@ -696,6 +691,7 @@ td button:last-child {
             </div>
         </div>
 
+        <!-- RIGHT -->
         <div class="card small-card">
             <h4>📊 Confidence</h4>
             <p id="confidence">0%</p>
@@ -703,38 +699,28 @@ td button:last-child {
 
     </div>
 
-    <!-- ===== MAIN ===== -->
+    <!-- ===== MAIN SECTION ===== -->
     <div class="incident-main">
 
-        <!-- LEFT -->
-        <div class="left-side">
-
-            <!-- TIMELINE -->
-            <div class="card timeline-card">
-                <h3>🕒 Event Timeline</h3>
-                <div id="timeline"></div>
-            </div>
-
-            <!-- INCIDENT LIST -->
-            <div class="card">
-                <h3>📋 Incident List</h3>
-                <div id="incidentList"></div>
-            </div>
-
-            <!-- THREAT PANEL -->
-            <div class="card threat-panel">
-                <h3>⚠ Threat Analysis</h3>
-                <div id="threatContent">
-                    Select an incident to view details...
-                </div>
-            </div>
-
+        <!-- LEFT: TIMELINE -->
+        <div class="card timeline-card">
+            <h3>🕒 Event Timeline</h3>
+            <div id="timeline"></div>
         </div>
 
-        <!-- RIGHT -->
+        <div class="card threat-panel">
+            <h3>⚠ Threat Analysis</h3>
+            <div id="threatContent">
+                Select an incident to view details...
+            </div>
+        </div>
+
+    </div>
+        
+        <!-- RIGHT SIDE -->
         <div class="right-side">
 
-            <!-- ACTIONS -->
+            <!-- ACTION CARD -->
             <div class="card action-card">
                 <h3>⚙️ Actions</h3>
 
@@ -753,7 +739,7 @@ td button:last-child {
                 </button>
             </div>
 
-            <!-- BLOCKED LIST -->
+            <!-- 🔥 BLOCKED PANEL -->
             <div id="blockedPanel" class="card hidden">
 
                 <div class="panel-header">
@@ -762,6 +748,7 @@ td button:last-child {
                 </div>
 
                 <h3>🚫 Blocked IP List</h3>
+
                 <div id="blockedListInline"></div>
 
             </div>
@@ -843,6 +830,7 @@ loadIP();
 function startScan(){
 
     systemActive = true;
+
     document.getElementById("status").innerText = "Running";
 
     startMainLoop();   // 🔥 start system loop
@@ -861,25 +849,10 @@ function stopScan(){
     document.getElementById("status").innerText = "Stopped";
 
     // 🔥 STOP GRAPH UPDATE
-    if (trafficChart) {
-    trafficChart.destroy();
-    trafficChart = null;
+    if (trafficChart) trafficChart.stop();
+    if (chart) chart.stop();
 }
 
-if (chart) {
-    chart.destroy();
-    chart = null;
-    }
-}
-
-function loadBlockedInline() {
-    loadBlocked();
-}
-
-function closeBlockedInline() {
-    document.getElementById("blockedPanel").classList.add("hidden");
-}
-    
 function addLog(msg){
     let box=document.getElementById("logs");
     box.innerHTML+=msg+"<br>";
@@ -1078,174 +1051,70 @@ async function loadTrafficGraph() {
                 fill: currentType === "line"
             }]
         },
-       options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
 
-    layout: {
-        padding: {
-            top: 20,
-            bottom: 30
-        }
-    },
+            layout: {
+                padding: {
+                    top: 20,
+                    bottom: 30   //  space for labels
+                }
+            },
 
-    plugins: {
+            plugins: {
 
-        // ✅ LEGEND (clean + visible)
-        legend: {
-            display: currentType === "pie",
-            position: "top",
-            labels: {
-                color: "#e6edf3",
-                font: { size: 12 }
-            }
-        },
+                // ✅ legend only for pie
+                legend: {
+                    display: currentType === "pie",
+                    labels: {
+                        color: "#ffffff",
+                        font: {
+                            size: 12,
+                            weight: "500"
+                        }
+                    }
+                },
 
-        // ✅ TOOLTIP (SHOW FULL INFO)
-        tooltip: {
-            backgroundColor: "#0f172a",
-            borderColor: "#334155",
-            borderWidth: 1,
-            titleColor: "#fff",
-            bodyColor: "#cbd5f5",
+                // ✅ tooltip style
+                tooltip: {
+                    titleColor: "#ffffff",
+                    bodyColor: "#e6edf3",
+                    backgroundColor: "#111827",
+                    borderColor: "#374151",
+                    borderWidth: 1
+                }
+            },
 
-            callbacks: {
-                label: function(ctx) {
-                    let d = globalData[ctx.dataIndex] || {};
-                    return [
-                        `IP: ${d.ip || "-"}`,
-                        `Location: ${d.location || "Local"}`,
-                        `Status: ${d.status || "-"}`,
-                        `Score: ${d.final?.toFixed(2) || "-"}`
-                    ];
+            // ✅ axis only for non-pie
+            scales: currentType === "pie" ? {} : {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: "#e6edf3",
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: "rgba(255,255,255,0.05)"
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: "#e6edf3",
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: { size: 12 }
+                    },
+                    grid: {
+                        color: "rgba(255,255,255,0.05)"
+                    }
                 }
             }
         }
-    },
-
-    // ✅ FIX AXIS (THIS IS YOUR MAIN PROBLEM)
-    scales: currentType === "pie" ? {} : {
-
-        y: {
-            beginAtZero: true,
-
-            title: {
-                display: true,
-                text: currentType === "histogram"
-                    ? "Number of Events"   // ✅ FIXED
-                    : "Threat Score",
-                color: "#94a3b8"
-            },
-
-            ticks: {
-                color: "#94a3b8"
-            },
-
-            grid: {
-                color: "rgba(255,255,255,0.05)"
-            }
-        },
-
-        x: {
-
-            title: {
-                display: true,
-                text: currentType === "histogram"
-                    ? "Score Range"
-                    : "Time (Traffic Flow)",
-                color: "#94a3b8"
-            },
-
-            ticks: {
-                color: "#94a3b8",
-
-                // 🔥 THIS FIXES CROOKED TEXT
-                maxRotation: 0,
-                minRotation: 0,
-
-                autoSkip: true,
-                maxTicksLimit: 10
-            },
-
-            grid: {
-                color: "rgba(255,255,255,0.05)"
-            }
-        }
-    }
+    });
 }
 
-function selectIncident(ip, score, status){
-    // 📌 BASIC INFO
-    document.getElementById("incidentIP").innerText = ip;
-    document.getElementById("confidence").innerText =
-        Math.round(score * 100) + "%";
-
-    
-    // 🧠 DETECT ATTACK TYPE
-    let type = "";
-
-    if (score > 0.85) type = "SQL Injection Attack";
-    else if (score > 0.7) type = "DDoS Attack";
-    else if (score > 0.5) type = "Brute Force Attempt";
-    else if (score > 0.3) type = "Suspicious Activity";
-    else type = "Normal Traffic";
-
-    // 🚨 RISK LEVEL
-    let risk = "";
-    let riskColor = "";
-
-    if (score > 0.7) {
-        risk = "HIGH RISK";
-        riskColor = "#ef4444";
-    } else if (score > 0.4) {
-        risk = "MEDIUM RISK";
-        riskColor = "#f59e0b";
-    } else {
-        risk = "LOW RISK";
-        riskColor = "#22c55e";
-    }
-
-    // ⚠️ IMPACT EXPLANATION
-    let impact = "";
-
-    if (status === "ATTACK") {
-        impact = `
-        If no action is taken:
-        • Unauthorized access may occur
-        • Sensitive financial data could be leaked
-        • System performance may degrade
-        • Potential service disruption (DDoS risk)
-        `;
-    } 
-    else if (status === "SUSPICIOUS") {
-        impact = `
-        Potential risk:
-        • May escalate into a full attack
-        • Repeated probing detected
-        • Requires monitoring or quarantine
-        `;
-    } 
-    else {
-        impact = `
-        No immediate threat detected.
-        Traffic appears normal.
-        `;
-    }
-
-    // 🧾 FINAL OUTPUT
-    document.getElementById("threatContent").innerHTML = `
-        <b style="color:#e2e8f0;">Attack Type:</b> ${type}<br><br>
-
-        <b style="color:${riskColor};">Risk Level:</b> ${risk}<br><br>
-
-        <b style="color:#cbd5f5;">Analysis:</b><br>
-        <div style="margin-top:6px; line-height:1.5;">
-            ${impact.replace(/\n/g,"<br>")}
-        </div>
-    `;
-}
-           
 async function blockIP(ip) {
 
     if (!systemActive) {
@@ -1354,16 +1223,11 @@ async function loadData(){
     // =========================
     // 🌍 GET LOCATIONS (FAST)
     // =========================
-    for (let x of d) {
-    if (!x.location) {
-        x.location = ipCache[x.ip] || "Loading...";
-
-        getLocation(x.ip).then(loc => {
-            ipCache[x.ip] = loc;
-            x.location = loc;
-        });
-    }
-}
+    await Promise.all(d.map(async (x) => {
+        if (!x.location) {
+            x.location = await getLocation(x.ip);
+        }
+    }));
 
     // =========================
     // 📋 BUILD TABLE
@@ -1452,22 +1316,24 @@ async function loadData(){
     
 // ALERTS
 async function loadAlerts(){
-    let r = await fetch("/incidents");
-    let d = await r.json();
+    let r=await fetch("/incidents");
+    let d=await r.json();
 
-    let box = document.getElementById("alerts");
-    if (!box) return;
+    let box=document.getElementById("alerts");
+    let list=document.getElementById("incidentList");
 
-    box.innerHTML = "";
+    box.innerHTML="";
+    list.innerHTML="";
 
     d.slice(-3).forEach(a=>{
-        box.innerHTML += `
-            <div class="alert">
-                ⚠ ${a.ip} (${a.status})
-            </div>`;
+        box.innerHTML+=`<div class="alert">⚠ ${a.ip}</div>`;
+    });
+
+    d.forEach(a=>{
+        list.innerHTML+=`<div class="alert">${a.ip} - ${a.status}</div>`;
     });
 }
-    
+
 function detectAttackType(x) {
 
     if (x.status === "NORMAL") return "LEGITIMATE_TRAFFIC";
@@ -1487,52 +1353,44 @@ async function loadIncidentsPage() {
 
     if (!data.length) return;
 
-    let timeline = document.getElementById("timeline");
-    let list = document.getElementById("incidentList");
-
-    timeline.innerHTML = "";
-    list.innerHTML = "";
-
-    data.slice(-10).reverse().forEach(x => {
-
-        let cls = x.status === "ATTACK"
-            ? "attack"
-            : x.status === "SUSPICIOUS"
-                ? "suspicious"
-                : "";
-
-        // TIMELINE
-        timeline.innerHTML += `
-            <div class="timeline-item ${cls}">
-                <div style="font-size:11px;color:#94a3b8;">${x.time}</div>
-                <div style="font-weight:bold;">
-                    ${x.attack_type || detectAttackType(x)}
-                </div>
-                <div>Origin: ${x.ip}</div>
-                <div>Score: ${x.final.toFixed(2)} | ${x.status}</div>
-            </div>
-        `;
-
-        // INCIDENT LIST (CLICKABLE)
-        list.innerHTML += `
-            <div class="blocked-item"
-                 onclick="selectIncident('${x.ip}', ${x.final}, '${x.status}')">
-
-                     <span>${x.ip}</span>
-                    <span style="color:#f87171;">
-                        ${x.attack_type || detectAttackType(x)}
-                    </span>
-            </div>
-        `;
-    });
-
-    // USER SELECTION STAYS
-   let current = document.getElementById("incidentIP").innerText;
-
-if (!current || current === "-") {
     let latest = data[data.length - 1];
-    selectIncident(latest.ip, latest.final, latest.status);
-    }
+
+    document.getElementById("incidentIP").innerText = latest.ip;
+    document.getElementById("confidence").innerText =
+        Math.round(latest.final * 100) + "%";
+
+    let timeline = document.getElementById("timeline");
+    timeline.innerHTML = "";
+
+    data.slice(-5).forEach(x => {
+
+        let cls = "";
+        if (x.status === "ATTACK") cls = "attack";
+        else if (x.status === "SUSPICIOUS") cls = "suspicious";
+
+        timeline.innerHTML += `
+    <div class="timeline-item ${cls}">
+        
+        <div style="font-size:11px; color:#94a3b8;">
+            ${x.time}
+        </div>
+
+        <div style="font-weight:bold; margin-top:4px;">
+            ${x.attack_type || detectAttackType(x)}
+        </div>
+
+        <div style="font-size:13px; color:#cbd5f5; margin-top:4px;">
+            Origin: ${x.ip} (${x.location || "Local"})
+        </div>
+
+        <div style="font-size:13px; margin-top:4px;">
+            Score: ${x.final.toFixed(2)} 
+            | Status: ${x.status}
+        </div>
+
+    </div>
+`;
+    });
 }
 
 async function loadBlocked() {
@@ -1601,11 +1459,8 @@ function startMainLoop() {
 
         let active = document.querySelector(".page:not(.hidden)");
 
-        // ✅ ALWAYS update data
         loadData();
-        loadAlerts();   // 🔥 ADD THIS
 
-        // ✅ PAGE-SPECIFIC UPDATE
         if (active && active.id === "dashboard") {
             loadGraph();
         }
@@ -1614,18 +1469,9 @@ function startMainLoop() {
             loadTrafficGraph();
         }
 
-        if (active && active.id === "incidents") {
-            loadIncidentsPage();   // 🔥 ADD THIS
-        }
-
     }, 2000);
 }
 
-window.onload = () => {
-    loadData();     // initial load
-    startScan();    // start system loop
-};
-    
 </script>
 
 </body>
