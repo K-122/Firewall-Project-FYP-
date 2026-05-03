@@ -8,7 +8,20 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
+body {
+    margin:0;
+    font-family:"Segoe UI";
+    color:#e6edf3;
+
+    /*  deep gradient */
+    background: radial-gradient(circle at 20% 20%, #0f172a, #020617 80%);
+
+    /* subtle grid overlay */
+    background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
 
 /* SIDEBAR */
 .sidebar {
@@ -80,11 +93,15 @@ body { margin:0; font-family:"Segoe UI"; background:#0b1220; color:#e6edf3; }
 
 /* CARD */
 .card {
-    background:#111827;
+    background: rgba(17,24,39,0.7);
+    backdrop-filter: blur(10px);
     padding:16px;
-    border-radius:10px;
+    border-radius:12px;
     margin-bottom:20px;
-    overflow: hidden;
+
+    /* glow edge */
+    border: 1px solid rgba(59,130,246,0.2);
+    box-shadow: 0 0 20px rgba(59,130,246,0.08);
 }
 
 .card h3 {
@@ -805,14 +822,39 @@ async function loadGraph() {
         data: {
             labels: labels,
             datasets: [{
-                label: "Traffic Score",
+                label: "Threat Ingress",
                 data: scores,
-                backgroundColor: "#22c55e"
+                backgroundColor: scores.map((v, i) =>
+                    i === Math.floor(scores.length / 2)
+                        ? "#7c3aed"   // highlight bar
+                        : "#374151"   // normal bars
+                ),
+                borderRadius: 4
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+
+            plugins: {
+                legend: { display: false }
+            },
+
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: "#64748b" },
+                    grid: {
+                        color: "rgba(255,255,255,0.05)"
+                    }
+                },
+                x: {
+                    ticks: { color: "#64748b" },
+                    grid: {
+                        color: "rgba(255,255,255,0.03)"
+                    }
+                }
+            }
         }
     });
 }
