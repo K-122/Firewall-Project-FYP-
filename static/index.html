@@ -724,10 +724,7 @@ td button:last-child {
             <div class="card action-card">
                 <h3>⚙️ Actions</h3>
 
-                <button class="btn stop"
-                    onclick="blockIP(document.getElementById('incidentIP').innerText);
-                    loadBlockedInline();
-                    ">
+                <button class="btn stop" onclick="handleBlockClick()">
                     🚫 Block IP
                 </button>
 
@@ -1117,9 +1114,15 @@ async function loadTrafficGraph() {
     });
 }
 
+
+let selectedIP = null
 function selectIncident(ip, score, status){
 
+    // 🔥 STORE SELECTED IP
+    selectedIP = ip;
+
     document.getElementById("incidentIP").innerText = ip;
+
     document.getElementById("confidence").innerText =
         Math.round(score * 100) + "%";
 
@@ -1156,6 +1159,28 @@ function selectIncident(ip, score, status){
     `;
 }
 
+async function handleBlockClick() {
+
+    let modal = document.getElementById("blockedModal");
+
+    // ❌ NO INCIDENT SELECTED
+    if (!selectedIP) {
+        modal.classList.remove("hidden");
+        loadBlocked();   // show list only
+        return;
+    }
+
+    // ✅ INCIDENT SELECTED → BLOCK FIRST
+    await blockIP(selectedIP);
+
+    // ✅ SHOW POPUP AFTER BLOCK
+    modal.classList.remove("hidden");
+    loadBlocked();
+
+    // 🔄 reset selection (optional)
+    selectedIP = null;
+}
+    
 async function blockIP(ip) {
 
     if (!systemActive) {
