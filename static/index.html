@@ -255,17 +255,91 @@ body::after {
     margin-top: 10px;
 }
 
-/* each item */
-/* .blocked-item {
+/* ===== DASHBOARD GRAPH + STATS ===== */
+.dashboard-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #1e293b;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    font-size: 14px;
-} */
+    gap: 20px;
+    align-items: stretch;
+}
+
+/* graph takes more space */
+.graph-card {
+    flex: 2;
+}
+
+/* stats panel */
+.stats-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* big entropy box */
+.stat-box {
+    background: linear-gradient(145deg, #020617, #0f172a);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(59,130,246,0.2);
+}
+
+.stat-box h2 {
+    color: #22c55e;
+    margin-top: 5px;
+}
+
+/* grid inside stats */
+.stat-grid {
+    display: flex;
+    flex-direction: column;   /* 🔥 vertical */
+    gap: 12px;
+}
+
+/* mini stat boxes */
+.mini-stat {
+    padding: 14px;
+    border-radius: 10px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+}
+
+/* label */
+.mini-stat p {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+
+/* value */
+.mini-stat h3 {
+    font-size: 22px;
+    font-weight: bold;
+}
+    
+/* ACTIVE VECTORS */
+.mini-stat:nth-child(1) {
+    background: linear-gradient(135deg, #0f172a, #1e3a8a);
+    color: #38bdf8;
+}
+
+/* MITIGATED */
+.mini-stat:nth-child(2) {
+    background: linear-gradient(135deg, #022c22, #14532d);
+    color: #22c55e;
+}
+
+/* HIGH RISK */
+.mini-stat:nth-child(3) {
+    background: linear-gradient(135deg, #2b0b0b, #7f1d1d);
+    color: #ef4444;
+}
+
+/* UPTIME */
+.mini-stat:nth-child(4) {
+    background: linear-gradient(135deg, #020617, #111827);
+    color: #e5e7eb;
+}
 
 /* ===== TABLE BASE ===== */
 table {
@@ -557,39 +631,74 @@ td button:last-child {
 <h2>AI Firewall Dashboard</h2>
 
 <!-- ===== TOP ROW ===== -->
-
 <div style="display:flex; gap:20px; align-items:stretch;">
-<!-- LEFT: IP + STATS -->
-<div class="card" style="flex:2;">
-    <p><b>IP:</b> <span id="deviceIP">Loading...</span></p>
-    <p><b>Total:</b> <span id="total">0</span></p>
-    <p><b>Attacks:</b> <span id="attacks">0</span></p>
-</div>
 
-<!-- RIGHT: CONTROL -->
-<div class="card" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
-    <div style="display:flex; gap:10px; margin-bottom:10px;">
-        <button onclick="startScan()" class="btn start">Start</button>
-        <button onclick="stopScan()" class="btn stop">Stop</button>
+    <!-- LEFT: IP + STATS -->
+    <div class="card" style="flex:2;">
+        <p><b>IP:</b> <span id="deviceIP">Loading...</span></p>
+        <p><b>Total:</b> <span id="total">0</span></p>
+        <p><b>Attacks:</b> <span id="attacks">0</span></p>
     </div>
 
-    <p>Status: <span id="status">Idle</span></p>
+    <!-- RIGHT: CONTROL -->
+    <div class="card" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <button onclick="startScan()" class="btn start">Start</button>
+            <button onclick="stopScan()" class="btn stop">Stop</button>
+        </div>
+
+        <p>Status: <span id="status">Idle</span></p>
+    </div>
 
 </div>
 
-</div>
+<!-- ===== GRAPH + STATS ROW ===== -->
+<div class="dashboard-row">
 
-<!-- GRAPH -->
-<div class="card" style="flex:1; max-width:450px;">
-    <h3>📊 Live Graph</h3>
-    <div style="height:220px;">
+    <!-- LEFT: GRAPH -->
+    <div class="card graph-card">
+        <h3>📊 Live Graph</h3>
         <canvas id="chart"></canvas>
     </div>
 
+    <!-- RIGHT: STATS PANEL -->
+    <div class="card stats-card">
+
+        <div class="stat-box">
+            <p>SYSTEM ENTROPY</p>
+            <h2 id="entropy">0.00%</h2>
+        </div>
+
+        <div class="stat-grid">
+
+            <div class="mini-stat">
+                <p>ACTIVE VECTORS</p>
+                <h3 id="vectors">0</h3>
+            </div>
+
+            <div class="mini-stat">
+                <p>MITIGATED</p>
+                <h3 id="mitigated">0%</h3>
+            </div>
+
+            <div class="mini-stat">
+                <p>HIGH RISK</p>
+                <h3 id="highRisk">0</h3>
+            </div>
+
+            <div class="mini-stat">
+                <p>UPTIME</p>
+                <h3 id="uptime">0s</h3>
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
 
-<!-- ALERT -->
-<div class="card" style="flex:1;">
+<-- ALERT -->
+<div class="card">
     <h3>🚨 Alerts</h3>
     <div id="alerts"></div>
 </div>
@@ -918,6 +1027,44 @@ async function loadGraph() {
         }
     });
 }
+
+function updateStats(data) {
+
+    if (!data || data.length === 0) return;
+
+    let total = data.length;
+
+    let highRisk = data.filter(d => d.final > 0.7).length;
+    let mitigated = data.filter(d => d.status === "BLOCKED").length;
+
+    let uptimeSec = Math.floor(performance.now() / 1000);
+
+    // ===== UPDATE UI =====
+    document.getElementById("vectors").innerText = total;
+
+    document.getElementById("mitigated").innerText =
+        ((mitigated / total) * 100 || 0).toFixed(2) + "%";
+
+    document.getElementById("highRisk").innerText = highRisk;
+
+    document.getElementById("uptime").innerText = formatTime(uptimeSec);
+
+    // ===== 🔴 ALERT EFFECT =====
+    let highRiskCard = document.querySelector(".mini-card.red");
+
+    if (!highRiskCard) return;
+
+    if (highRisk > 10) {
+        highRiskCard.classList.add("alert");
+    } else {
+        highRiskCard.classList.remove("alert"); //  important reset
+    }
+}
+function formatTime(sec) {
+    let d = Math.floor(sec / 86400);
+    let h = Math.floor((sec % 86400) / 3600);
+    return `${d}D ${h}H`;
+}
     
 //Traffic graph
 let trafficChart;
@@ -944,26 +1091,30 @@ async function loadTrafficGraph() {
 
     let labels = [];
     let scores = [];
+    let counts = [];
 
     // =========================
-    // 🟢 PIE → LOCATION + STATUS
+    // 🟢 PIE MODE (Distribution)
     // =========================
     if (currentType === "pie") {
 
-        let counts = {};
+        let map = {};
 
         data.forEach(d => {
-            let loc = d.location || "Unknown";
-            let key = `${loc} - ${d.status}`;
-            counts[key] = (counts[key] || 0) + 1;
+            let key = `${d.location || "Unknown"} - ${d.status}`;
+            map[key] = (map[key] || 0) + 1;
         });
 
-        labels = Object.keys(counts);
-        scores = Object.values(counts);
+        let sorted = Object.entries(map)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
+
+        labels = sorted.map(x => x[0]);
+        scores = sorted.map(x => x[1]);
     }
 
     // =========================
-    // 📊 HISTOGRAM
+    // 📊 HISTOGRAM MODE
     // =========================
     else if (currentType === "histogram") {
 
@@ -983,48 +1134,46 @@ async function loadTrafficGraph() {
     }
 
     // =========================
-    // 📊 COUNT MODE (NEW 🔥)
-    // =========================
-    else if (yType === "count") {
-
-        let counts = {};
-
-        data.forEach(d => {
-            let key = d[xType] || "Unknown";
-            counts[key] = (counts[key] || 0) + 1;
-        });
-
-        labels = Object.keys(counts);
-        scores = Object.values(counts);
-    }
-
-    // =========================
-    // 📈 NORMAL MODE
+    // 📊 GROUP MODE (DUAL AXIS 🔥)
     // =========================
     else {
 
-        let last = data.slice(-20);
+        let countMap = {};
+        let scoreMap = {};
 
-        labels = last.map(d => d[xType] || "N/A");
-        scores = last.map(d => d.final);
+        data.forEach(d => {
+            let key = d[xType] || "Unknown";
+
+            countMap[key] = (countMap[key] || 0) + 1;
+            scoreMap[key] = (scoreMap[key] || 0) + d.final;
+        });
+
+        // average score
+        for (let k in scoreMap) {
+            scoreMap[k] = scoreMap[k] / countMap[k];
+        }
+
+        let sorted = Object.entries(countMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
+
+        labels = sorted.map(x => x[0]);
+        counts = sorted.map(x => x[1]);
+        scores = labels.map(k => scoreMap[k]);
     }
 
     let ctx = document.getElementById("trafficChart");
     if (!ctx) return;
 
     // =========================
-    // 🎨 COLOR LOGIC
+    // 🎨 COLOR FUNCTION
     // =========================
     function getColor(label, score) {
-
         if (currentType === "pie") {
             if (label.includes("ATTACK")) return "#ef4444";
             if (label.includes("SUSPICIOUS")) return "#f59e0b";
             return "#22c55e";
         }
-
-        if (yType === "count") return "#3b82f6";
-
         if (score > 0.7) return "#ef4444";
         if (score > 0.4) return "#f59e0b";
         return "#22c55e";
@@ -1035,45 +1184,11 @@ async function loadTrafficGraph() {
         : scores.map(s => getColor(null, s));
 
     // =========================
-    // 🔄 UPDATE EXISTING CHART
+    // 🔄 UPDATE CHART
     // =========================
     if (trafficChart) {
 
-        trafficChart.config.type =
-            currentType === "histogram" ? "bar" : currentType;
-
-        trafficChart.data.labels = labels;
-        trafficChart.data.datasets[0].data = scores;
-        trafficChart.data.datasets[0].backgroundColor = bgColors;
-
-        trafficChart.data.datasets[0].label =
-            currentType === "pie"
-                ? "Attack Distribution"
-                : currentType === "histogram"
-                    ? "Score Distribution"
-                    : yType === "count"
-                        ? "Count"
-                        : "Traffic Score";
-
-        trafficChart.options.scales =
-            currentType === "pie" ? {} : {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: yType === "count" ? "COUNT" : "SCORE" },
-                    ticks: { color: "#e6edf3" }
-                },
-                x: {
-                    title: { display: true, text: xType.toUpperCase() },
-                    ticks: {
-                        color: "#e6edf3",
-                        maxRotation: 45,
-                        minRotation: 45
-                    }
-                }
-            };
-
-        trafficChart.update();
-        return;
+        trafficChart.destroy();
     }
 
     // =========================
@@ -1081,48 +1196,95 @@ async function loadTrafficGraph() {
     // =========================
     trafficChart = new Chart(ctx, {
         type: currentType === "histogram" ? "bar" : currentType,
+
         data: {
             labels: labels,
-            datasets: [{
-                label:
-                    currentType === "pie"
-                        ? "Attack Distribution"
-                        : currentType === "histogram"
-                            ? "Score Distribution"
-                            : yType === "count"
-                                ? "Count"
-                                : "Traffic Score",
 
-                data: scores,
-                backgroundColor: bgColors,
-                borderColor: "#22c55e",
-                fill: currentType === "line"
-            }]
+            datasets:
+
+                currentType === "pie" || currentType === "histogram"
+                    ? [{
+                        label: "Distribution",
+                        data: scores,
+                        backgroundColor: bgColors
+                    }]
+
+                    : [
+                        // 🔵 COUNT (BAR)
+                        {
+                            label: "Traffic Count",
+                            data: counts,
+                            backgroundColor: "#3b82f6",
+                            yAxisID: 'y1'
+                        },
+
+                        // 🟢 SCORE (LINE)
+                        {
+                            label: "Threat Score",
+                            data: scores,
+                            borderColor: "#22c55e",
+                            backgroundColor: "rgba(34,197,94,0.2)",
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        }
+                    ]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: false,
 
             plugins: {
-                legend: { display: currentType === "pie" }
-            },
+                legend: { display: true },
 
-            scales: currentType === "pie" ? {} : {
-                y: {
-                    beginAtZero: true,
-                    title: { display: true, text: yType === "count" ? "COUNT" : "SCORE" },
-                    ticks: { color: "#e6edf3" }
-                },
-                x: {
-                    title: { display: true, text: xType.toUpperCase() },
-                    ticks: {
-                        color: "#e6edf3",
-                        maxRotation: 45,
-                        minRotation: 45
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            return ctx.dataset.label + ": " + ctx.raw;
+                        }
                     }
                 }
-            }
+            },
+
+            scales:
+                currentType === "pie"
+                    ? {}
+
+                    : currentType === "histogram"
+                        ? {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: "COUNT" }
+                            }
+                        }
+
+                        : {
+                            y: {
+                                position: 'left',
+                                beginAtZero: true,
+                                title: { display: true, text: "SCORE" },
+                                ticks: { color: "#22c55e" }
+                            },
+                            y1: {
+                                position: 'right',
+                                beginAtZero: true,
+                                grid: { drawOnChartArea: false },
+                                title: { display: true, text: "COUNT" },
+                                ticks: { color: "#3b82f6" }
+                            },
+                            x: {
+                                ticks: {
+                                    color: "#e6edf3",
+                                    autoSkip: true,
+                                    maxRotation: 0
+                                },
+                                title: {
+                                    display: true,
+                                    text: xType.toUpperCase()
+                                }
+                            }
+                        }
         }
     });
 }
@@ -1625,6 +1787,7 @@ function startMainLoop() {
 
         loadData();
         loadAlerts();
+        updateStats(globalData);
         
         if (active && active.id === "dashboard") {
             loadGraph();
