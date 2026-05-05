@@ -259,12 +259,12 @@ body::after {
 .dashboard-row {
     display: flex;
     gap: 20px;
-    align-items: stretch;
+    align-items: flex-start;
 }
 
 /* graph takes more space */
 .graph-card {
-    flex: none;          
+    flex: 2;          
     width: 600px;        /* control size */
     max-width: 100%;
 }
@@ -658,11 +658,12 @@ td button:last-child {
 <div class="dashboard-row">
 
     <!-- LEFT: GRAPH -->
-    <div class="card graph-card">
-        <h3>📊 Live Graph</h3>
+    <div class="graph-card">
+    <h3>📊 Live Graph</h3>
+    <div class="graph-box">
         <canvas id="chart"></canvas>
     </div>
-
+</div>
     <!-- RIGHT: STATS PANEL -->
     <div class="card stats-card">
 
@@ -973,37 +974,58 @@ function addLog(msg){
 }
 
 // GRAPH
-let chart;
+let chart= null;
 
-async function loadGraph() {
+function loadGraph() {
 
-    let res = await fetch("/data");
-    let data = await res.json();
-
+    // ✅ use existing data (avoid extra fetch)
+    let data = window.globalData || [];
     if (!data || data.length === 0) return;
 
+    // show last 20 records
     let last = data.slice(-20);
 
-    let labels = last.map(d => d.time);
-    let scores = last.map(d => d.final);
+    let labels = last.map(d => d.time || "");
+    let scores = last.map(d => d.final || 0);
 
-    // ✅ CREATE ONLY ONCE
+    const ctx = document.getElementById("chart");
+    if (!ctx) return;
+
+    // =========================
+    // 🎨 BAR COLORS
+    // =========================
+    const colors = scores.map((v, i) => {
+        if (v > 0.7) return "#ef4444";      // high risk
+        if (v > 0.4) return "#f59e0b";      // medium
+        return "#374151";                   // normal
+    });
+
+    // highlight middle bar (optional)
+    if (colors.length > 0) {
+        const mid = Math.floor(colors.length / 2);
+        colors[mid] = "#7c3aed";
+    }
+
+    // =========================
+    // 🆕 CREATE ONCE
+    // =========================
     if (!chart) {
-        chart = new Chart(document.getElementById("chart"), {
+        chart = new Chart(ctx, {
             type: "bar",
             data: {
                 labels: labels,
                 datasets: [{
-                    label: "Threat Ingress",
+                    label: "Threat Score",
                     data: scores,
-                    backgroundColor: "#374151",
-                    borderRadius: 4
+                    backgroundColor: colors,
+                    borderRadius: 4,
+                    barThickness: 8
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
-                animation: false,   // 🔥 STOP JUMPING
+                maintainAspectRatio: false,   // 🔥 keep fixed size
+                animation: false,             // 🔥 no flicker
 
                 plugins: {
                     legend: { display: false }
@@ -1012,12 +1034,24 @@ async function loadGraph() {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { color: "#64748b" },
-                        grid: { color: "rgba(255,255,255,0.05)" }
+                        max: 1,   // since score is 0-1
+                        ticks: {
+                            color: "#64748b",
+                            stepSize: 0.2
+                        },
+                        grid: {
+                            color: "rgba(255,255,255,0.05)"
+                        }
                     },
                     x: {
-                        ticks: { color: "#64748b" },
-                        grid: { color: "rgba(255,255,255,0.03)" }
+                        ticks: {
+                            color: "#64748b",
+                            autoSkip: true,
+                            maxRotation: 0
+                        },
+                        grid: {
+                            color: "rgba(255,255,255,0.03)"
+                        }
                     }
                 }
             }
@@ -1026,19 +1060,12 @@ async function loadGraph() {
         return;
     }
 
-    // ✅ UPDATE ONLY (NO DESTROY)
+    // 🔄 UPDATE ONLY (NO DESTROY)
     chart.data.labels = labels;
     chart.data.datasets[0].data = scores;
+    chart.data.datasets[0].backgroundColor = colors;
 
-    // keep your highlight logic
-    chart.data.datasets[0].backgroundColor =
-        scores.map((v, i) =>
-            i === Math.floor(scores.length / 2)
-                ? "#7c3aed"
-                : "#374151"
-        );
-
-    chart.update();
+    chart.update('none');   // no animation jump
 }
 
 function updateStats(data) {
@@ -1063,7 +1090,7 @@ function updateStats(data) {
     document.getElementById("uptime").innerText = formatTime(uptimeSec);
 
     // ===== 🔴 ALERT EFFECT =====
-    let highRiskCard = document.querySelector(".mini-card.red");
+    let highRiskCard = document.querySelectorAll(".mini-stat")[2];
 
     if (!highRiskCard) return;
 
