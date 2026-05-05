@@ -977,97 +977,69 @@ function addLog(msg){
 // GRAPH
 let chart;
 
-function loadGraph() {
+async function loadGraph() {
+
+    let res = await fetch("/data");
+    let data = await res.json();
+
+    // ✅ ONLY block if truly invalid
+    if (!data) return;
+
+    // ❌ allow empty array to retry later
+    if (data.length === 0) return;
+
+    let last = data.slice(-20);
+
+    // ✅ SAFE FIELD MAPPING
+    let labels = last.map(d => d.time || d.timestamp || "");
+    let scores = last.map(d => d.final || d.score || 0);
 
     const ctx = document.getElementById("chart");
     if (!ctx) return;
 
-    let data = window.globalData || [];
-
     // =========================
-    // 🆕 CREATE EMPTY CHART FIRST
+    // 🆕 CREATE ONLY WHEN DATA EXISTS
     // =========================
     if (!chart) {
         chart = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: [],
+                labels: labels,
                 datasets: [{
-                    label: "Threat Score",
-                    data: [],
-                    backgroundColor: "#374151",
-                    borderRadius: 4,
-                    barThickness: 8
+                    label: "Threat Ingress",
+                    data: scores,
+                    backgroundColor: scores.map((v, i) =>
+                        i === Math.floor(scores.length / 2)
+                            ? "#7c3aed"
+                            : "#374151"
+                    ),
+                    borderRadius: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
-
-                plugins: {
-                    legend: { display: false }
-                },
-
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 1,
-                        ticks: {
-                            color: "#64748b",
-                            stepSize: 0.2
-                        },
-                        grid: {
-                            color: "rgba(255,255,255,0.05)"
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            color: "#64748b",
-                            autoSkip: true,
-                            maxRotation: 0
-                        },
-                        grid: {
-                            color: "rgba(255,255,255,0.03)"
-                        }
-                    }
-                }
+                plugins: { legend: { display: false } }
             }
         });
-    }
 
-    // ❌ no data yet → just keep empty chart
-    if (!data || data.length === 0) return;
-
-    // =========================
-    // 📊 PROCESS DATA
-    // =========================
-    let last = data.slice(-20);
-
-    let labels = last.map(d => d.time || "");
-    let scores = last.map(d => d.final || 0);
-
-    // 🎨 COLORS
-    const colors = scores.map((v, i) => {
-        if (v > 0.7) return "#ef4444";   // high
-        if (v > 0.4) return "#f59e0b";   // medium
-        return "#374151";                // normal
-    });
-
-    // highlight middle bar
-    if (colors.length > 0) {
-        const mid = Math.floor(colors.length / 2);
-        colors[mid] = "#7c3aed";
+        return;
     }
 
     // =========================
-    // 🔄 UPDATE ONLY (NO DESTROY)
+    // 🔄 UPDATE (NO DESTROY)
     // =========================
     chart.data.labels = labels;
     chart.data.datasets[0].data = scores;
-    chart.data.datasets[0].backgroundColor = colors;
 
-    chart.update('none');   // smooth, no jump
+    chart.data.datasets[0].backgroundColor = scores.map((v, i) =>
+        i === Math.floor(scores.length / 2)
+            ? "#7c3aed"
+            : "#374151"
+    );
+
+    chart.update('none');
 }
     
 function updateStats(data) {
