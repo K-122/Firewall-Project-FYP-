@@ -1507,7 +1507,7 @@ async function loadData(){
     let r = await fetch("/data");
     let d = await r.json();
 
-    if (!d || d.length === 0) return;
+    if (!d) return;
 
     globalData = d;
 
@@ -1612,7 +1612,7 @@ async function loadData(){
     // =========================
     loadTrafficGraph();
     loadGraph();
-    updateStats(data)
+    updateStats(d)
 }
     
 // ALERTS
