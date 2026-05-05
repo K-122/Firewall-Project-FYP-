@@ -1054,15 +1054,28 @@ function updateStats(data) {
     let uptimeSec = Math.floor(performance.now() / 1000);
 
     // ===== UPDATE UI =====
-    document.getElementById("vectors").innerText = total;
+// ===== SAFE TOTAL =====
+let totalSafe = total || 1;
 
-    document.getElementById("mitigated").innerText =
-        ((mitigated / total) * 100 || 0).toFixed(2) + "%";
+// ===== ACTIVE VECTORS =====
+document.getElementById("vectors").innerText = total;
 
-    document.getElementById("highRisk").innerText = highRisk;
+// ===== MITIGATED % =====
+let mitigatedPercent = (mitigated / totalSafe) * 100;
+document.getElementById("mitigated").innerText =
+    mitigatedPercent.toFixed(2) + "%";
 
-    document.getElementById("uptime").innerText = formatTime(uptimeSec);
+// ===== HIGH RISK =====
+document.getElementById("highRisk").innerText = highRisk;
 
+// ===== UPTIME (WITH MINUTES) =====
+document.getElementById("uptime").innerText =
+    formatTime(uptimeSec);
+
+// ===== SYSTEM ENTROPY =====
+document.getElementById("entropy").innerText =
+    calculateEntropy(data) + "%";
+    
     // ===== 🔴 ALERT EFFECT =====
     let cards = document.querySelectorAll(".mini-stat");
     if (cards.length < 3) return;
@@ -1076,10 +1089,41 @@ function updateStats(data) {
     }
 }
     
-function formatTime(sec) {
-    let d = Math.floor(sec / 86400);
-    let h = Math.floor((sec % 86400) / 3600);
-    return `${d}D ${h}H`;
+function formatTime(seconds) {
+    let d = Math.floor(seconds / 86400);
+    let h = Math.floor((seconds % 86400) / 3600);
+    let m = Math.floor((seconds % 3600) / 60);
+    let s = seconds % 60;
+
+    return `${d}D ${h}H ${m}M ${s}S`;
+}
+
+function calculateEntropy(data) {
+
+    if (!data || data.length === 0) return 0;
+
+    let counts = {};
+    let total = data.length;
+
+    // count attack types
+    data.forEach(d => {
+        let type = d.attack_type || d.status || "UNKNOWN";
+        counts[type] = (counts[type] || 0) + 1;
+    });
+
+    // Shannon entropy
+    let entropy = 0;
+
+    for (let key in counts) {
+        let p = counts[key] / total;
+        entropy -= p * Math.log2(p);
+    }
+
+    // normalize to percentage
+    let maxEntropy = Math.log2(Object.keys(counts).length || 1);
+    let normalized = maxEntropy ? (entropy / maxEntropy) : 0;
+
+    return (normalized * 100).toFixed(2);
 }
     
 //Traffic graph
