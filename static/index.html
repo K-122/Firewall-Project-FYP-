@@ -446,12 +446,13 @@ td button:last-child {
 
 /* FIX GRAPH SIZE (IMPORTANT) */
 .graph-box {
-    height: 300px;
+    height: 260px;
 }
 
 /* prevent chart jumping */
 .graph-box canvas {
     height: 100% !important;
+    width: 100% !important;
 }
 
 /* ===== FULLSCREEN ===== */
@@ -978,54 +979,31 @@ let chart= null;
 
 function loadGraph() {
 
-    // ✅ use existing data (avoid extra fetch)
-    let data = window.globalData || [];
-    if (!data || data.length === 0) return;
-
-    // show last 20 records
-    let last = data.slice(-20);
-
-    let labels = last.map(d => d.time || "");
-    let scores = last.map(d => d.final || 0);
-
     const ctx = document.getElementById("chart");
     if (!ctx) return;
 
-    // =========================
-    // 🎨 BAR COLORS
-    // =========================
-    const colors = scores.map((v, i) => {
-        if (v > 0.7) return "#ef4444";      // high risk
-        if (v > 0.4) return "#f59e0b";      // medium
-        return "#374151";                   // normal
-    });
-
-    // highlight middle bar (optional)
-    if (colors.length > 0) {
-        const mid = Math.floor(colors.length / 2);
-        colors[mid] = "#7c3aed";
-    }
+    let data = window.globalData || [];
 
     // =========================
-    // 🆕 CREATE ONCE
+    // 🆕 CREATE EMPTY CHART FIRST
     // =========================
     if (!chart) {
         chart = new Chart(ctx, {
             type: "bar",
             data: {
-                labels: labels,
+                labels: [],
                 datasets: [{
                     label: "Threat Score",
-                    data: scores,
-                    backgroundColor: colors,
+                    data: [],
+                    backgroundColor: "#374151",
                     borderRadius: 4,
                     barThickness: 8
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,   // 🔥 keep fixed size
-                animation: false,             // 🔥 no flicker
+                maintainAspectRatio: false,
+                animation: false,
 
                 plugins: {
                     legend: { display: false }
@@ -1034,7 +1012,7 @@ function loadGraph() {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: 1,   // since score is 0-1
+                        max: 1,
                         ticks: {
                             color: "#64748b",
                             stepSize: 0.2
@@ -1056,18 +1034,42 @@ function loadGraph() {
                 }
             }
         });
-
-        return;
     }
 
+    // ❌ no data yet → just keep empty chart
+    if (!data || data.length === 0) return;
+
+    // =========================
+    // 📊 PROCESS DATA
+    // =========================
+    let last = data.slice(-20);
+
+    let labels = last.map(d => d.time || "");
+    let scores = last.map(d => d.final || 0);
+
+    // 🎨 COLORS
+    const colors = scores.map((v, i) => {
+        if (v > 0.7) return "#ef4444";   // high
+        if (v > 0.4) return "#f59e0b";   // medium
+        return "#374151";                // normal
+    });
+
+    // highlight middle bar
+    if (colors.length > 0) {
+        const mid = Math.floor(colors.length / 2);
+        colors[mid] = "#7c3aed";
+    }
+
+    // =========================
     // 🔄 UPDATE ONLY (NO DESTROY)
+    // =========================
     chart.data.labels = labels;
     chart.data.datasets[0].data = scores;
     chart.data.datasets[0].backgroundColor = colors;
 
-    chart.update('none');   // no animation jump
+    chart.update('none');   // smooth, no jump
 }
-
+    
 function updateStats(data) {
 
     if (!data || data.length === 0) return;
@@ -1090,16 +1092,18 @@ function updateStats(data) {
     document.getElementById("uptime").innerText = formatTime(uptimeSec);
 
     // ===== 🔴 ALERT EFFECT =====
-    let highRiskCard = document.querySelectorAll(".mini-stat")[2];
+    let cards = document.querySelectorAll(".mini-stat");
+    if (cards.length < 3) return;
 
-    if (!highRiskCard) return;
+    let highRiskCard = cards[2];
 
     if (highRisk > 10) {
         highRiskCard.classList.add("alert");
     } else {
-        highRiskCard.classList.remove("alert"); //  important reset
+        highRiskCard.classList.remove("alert");
     }
 }
+    
 function formatTime(sec) {
     let d = Math.floor(sec / 86400);
     let h = Math.floor((sec % 86400) / 3600);
@@ -1607,6 +1611,8 @@ async function loadData(){
     // 📊 UPDATE GRAPH LAST
     // =========================
     loadTrafficGraph();
+    loadGraph();
+    updateStats(data)
 }
     
 // ALERTS
