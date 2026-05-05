@@ -264,7 +264,9 @@ body::after {
 
 /* graph takes more space */
 .graph-card {
-    flex: 2;
+    flex: none;          
+    width: 600px;        /* control size */
+    max-width: 100%;
 }
 
 /* stats panel */
@@ -444,7 +446,7 @@ td button:last-child {
 
 /* FIX GRAPH SIZE (IMPORTANT) */
 .graph-box {
-    height: 340px;
+    height: 300px;
 }
 
 /* prevent chart jumping */
@@ -697,7 +699,7 @@ td button:last-child {
 
 </div>
 
-<-- ALERT -->
+<!--- ALERT --->
 <div class="card">
     <h3>🚨 Alerts</h3>
     <div id="alerts"></div>
@@ -974,6 +976,7 @@ function addLog(msg){
 let chart;
 
 async function loadGraph() {
+
     let res = await fetch("/data");
     let data = await res.json();
 
@@ -984,48 +987,58 @@ async function loadGraph() {
     let labels = last.map(d => d.time);
     let scores = last.map(d => d.final);
 
-    if (chart) chart.destroy();
-
-    chart = new Chart(document.getElementById("chart"), {
-        type: "bar",
-        data: {
-            labels: labels,
-            datasets: [{
-                label: "Threat Ingress",
-                data: scores,
-                backgroundColor: scores.map((v, i) =>
-                    i === Math.floor(scores.length / 2)
-                        ? "#7c3aed"   // highlight bar
-                        : "#374151"   // normal bars
-                ),
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-
-            plugins: {
-                legend: { display: false }
+    // ✅ CREATE ONLY ONCE
+    if (!chart) {
+        chart = new Chart(document.getElementById("chart"), {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Threat Ingress",
+                    data: scores,
+                    backgroundColor: "#374151",
+                    borderRadius: 4
+                }]
             },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,   // 🔥 STOP JUMPING
 
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: "#64748b" },
-                    grid: {
-                        color: "rgba(255,255,255,0.05)"
-                    }
+                plugins: {
+                    legend: { display: false }
                 },
-                x: {
-                    ticks: { color: "#64748b" },
-                    grid: {
-                        color: "rgba(255,255,255,0.03)"
+
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: "#64748b" },
+                        grid: { color: "rgba(255,255,255,0.05)" }
+                    },
+                    x: {
+                        ticks: { color: "#64748b" },
+                        grid: { color: "rgba(255,255,255,0.03)" }
                     }
                 }
             }
-        }
-    });
+        });
+
+        return;
+    }
+
+    // ✅ UPDATE ONLY (NO DESTROY)
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = scores;
+
+    // keep your highlight logic
+    chart.data.datasets[0].backgroundColor =
+        scores.map((v, i) =>
+            i === Math.floor(scores.length / 2)
+                ? "#7c3aed"
+                : "#374151"
+        );
+
+    chart.update();
 }
 
 function updateStats(data) {
