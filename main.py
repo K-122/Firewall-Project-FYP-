@@ -8,11 +8,33 @@ import os
 import threading
 import subprocess
 import requests
+import pandas as pd
+import tensorflow as tf
+import joblib
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 print("🚀 Starting AI Firewall System...")
+print("🧠 Loading AI models...")
+
+lstm_model = tf.keras.models.load_model(
+    "iot_lstm_ids_model.h5"
+)
+
+mlp_model = tf.keras.models.load_model(
+    "mlp_iot_model.h5"
+)
+
+lstm_scaler = joblib.load(
+    "iot_scaler.pkl"
+)
+
+mlp_scaler = joblib.load(
+    "mlp_scaler.pkl"
+)
+
+print("✅ AI models loaded")
 
 # =========================
 # SETTINGS
@@ -22,6 +44,8 @@ LOG_FILE = "eve.json"
 data_store = []
 attack_counter = {}
 blocked_ips = set()
+SEQUENCE_LENGTH = 10
+sequence_buffer = []
 
 # =========================
 # BLOCK IP (LOCAL ONLY)
@@ -51,72 +75,173 @@ def block_ip(ip):
         "-j",
         "DROP"
     ])
+
+@tf.function
+def fast_lstm(x):
+    return lstm_model(x, training=False)
+
+@tf.function
+def fast_mlp(x):
+    return mlp_model(x, training=False)
     
 # =========================
 # PROCESS LOG LINE
 # =========================
 def process_line(line):
+
+    global sequence_buffer
+
     try:
         log = json.loads(line)
     except:
         return
 
-    if log.get("event_type") not in [
-        "flow",
-        "alert",
-        "dns",
-        "http",
-        "tls"
-    ]:
+    if "flow" not in log:
         return
 
     src_ip = log.get("src_ip", "unknown")
+    dest_ip = log.get("dest_ip", "unknown")
 
-    if ":" in src_ip:
+    # Prefer public IP
+    if src_ip.startswith(("192.168", "10.", "172.")):
+        ip = dest_ip
+    else:
+        ip = src_ip
+
+    # Skip IPv6
+    if ":" in ip:
         return
 
-    # Fake AI score
-    final_score = np.random.random()
+    flow = log.get("flow", {})
 
+    # =========================
+    # EXTRACT FEATURES
+    # =========================
+    data = {
+        "duration": [flow.get("age", 0)],
+        "orig_bytes": [flow.get("bytes_toserver", 0)],
+        "resp_bytes": [flow.get("bytes_toclient", 0)],
+        "orig_pkts": [flow.get("pkts_toserver", 0)],
+        "resp_pkts": [flow.get("pkts_toclient", 0)],
+    }
+
+    df = pd.DataFrame(data)
+
+    try:
+        # =========================
+        # SCALE FEATURES
+        # =========================
+        X_lstm = lstm_scaler.transform(df)
+        X_mlp = mlp_scaler.transform(df)
+
+    except Exception as e:
+        print("Scaling error:", e)
+        return
+
+    # =========================
+    # BUILD LSTM SEQUENCE
+    # =========================
+    sequence_buffer.append(X_lstm[0])
+
+    if len(sequence_buffer) < SEQUENCE_LENGTH:
+        return
+
+    if len(sequence_buffer) > SEQUENCE_LENGTH:
+        sequence_buffer.pop(0)
+
+    X_seq = np.array(sequence_buffer).reshape(
+        1,
+        SEQUENCE_LENGTH,
+        -1
+    )
+
+    try:
+        # =========================
+        # AI PREDICTION
+        # =========================
+        lstm_score = fast_lstm(
+            X_seq
+        )[0][0].numpy()
+
+        mlp_score = fast_mlp(
+            X_mlp
+        )[0][0].numpy()
+
+    except Exception as e:
+        print("Prediction error:", e)
+        return
+
+    # =========================
+    # FUSION SCORE
+    # =========================
+    final_score = (
+        0.6 * lstm_score
+    ) + (
+        0.4 * mlp_score
+    )
+
+    # =========================
+    # AI DECISION
+    # =========================
     if final_score > 0.7:
         status = "ATTACK"
+
     elif final_score > 0.4:
         status = "SUSPICIOUS"
+
     else:
         status = "NORMAL"
 
-    print(f"🌐 {src_ip} | {status} | {final_score:.3f}")
+    print(
+        f"🌐 {ip} | "
+        f"LSTM:{lstm_score:.3f} | "
+        f"MLP:{mlp_score:.3f} | "
+        f"FINAL:{final_score:.3f} | "
+        f"{status}"
+    )
 
+    # =========================
+    # SAVE RECORD
+    # =========================
     record = {
-        "ip": src_ip,
+        "ip": ip,
 
         "final": float(final_score),
+
         "score": float(final_score),
 
         "status": status,
 
-        "attack_type":
-            "SQL_INJECTION" if final_score > 0.85 else
-            "DDOS" if final_score > 0.7 else
-            "BRUTE_FORCE" if final_score > 0.5 else
-            "NORMAL",
+        "attack_type": "AI_DETECTED",
+
+        "severity": (
+            3 if status == "ATTACK"
+            else 2 if status == "SUSPICIOUS"
+            else 1
+        ),
 
         "time": time.strftime("%H:%M:%S"),
 
-        "location": get_location(src_ip),
-        "blocked": src_ip in blocked_ips
+        "location": get_location(ip),
+
+        "blocked": ip in blocked_ips
     }
 
     data_store.append(record)
 
-    # keep latest 1000
     data_store[:] = data_store[-1000:]
 
+    # =========================
+    # AUTO BLOCKING
+    # =========================
     if status == "ATTACK":
-        attack_counter[src_ip] = attack_counter.get(src_ip, 0) + 1
 
-        if attack_counter[src_ip] >= 3:
-            block_ip(src_ip)
+        attack_counter[ip] = (
+            attack_counter.get(ip, 0) + 1
+        )
+
+        if attack_counter[ip] >= 3:
+            block_ip(ip)
 
 # =========================
 # GET IP LOCATION
