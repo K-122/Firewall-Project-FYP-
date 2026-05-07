@@ -1,14 +1,8 @@
 fastapi
 uvicorn
-pandas
-numpy
-joblib
-requests
-fastapi
-uvicorn
 numpy
 pandas
-tensorflow
+tensorflow-cpu
 joblib
 scikit-learn
 requests
