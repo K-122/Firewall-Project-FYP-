@@ -368,24 +368,25 @@ table {
 
 /* ===== CELL STYLE ===== */
 th, td {
-    padding: 8px 10px;          /* 🔥 tighter spacing */
+    padding: 8px 10px;          /*  tighter spacing */
     border-bottom: 1px solid #1f2937;
     font-size: 14px;
 }
 
 /* ===== ALIGNMENT ===== */
-th:nth-child(1), td:nth-child(1) { text-align: left; }
-th:nth-child(2), td:nth-child(2) { text-align: left; }
+th:nth-child(1), td:nth-child(1) { text-align:center; }
+th:nth-child(2), td:nth-child(2) { text-align: center; }
 th:nth-child(3), td:nth-child(3) { text-align: center; }
-th:nth-child(4), td:nth-child(4) { text-align: right; }
-th:nth-child(5), td:nth-child(5) { text-align: center; } /* 🔥 action */
+th:nth-child(4), td:nth-child(4) { text-align: center; }
+th:nth-child(5), td:nth-child(5) { text-align: center; } 
 
 /* ===== WIDTH (FIX OVERFLOW) ===== */
-th:nth-child(1), td:nth-child(1) { width: 90px; }
-th:nth-child(2), td:nth-child(2) { width: 150px; }
-th:nth-child(3), td:nth-child(3) { width: 110px; }
-th:nth-child(4), td:nth-child(4) { width: 80px; }
-th:nth-child(5), td:nth-child(5) { width: 110px; } /* action */
+th:nth-child(1), td:nth-child(1) { width: 90px; }   /* Time */
+th:nth-child(2), td:nth-child(2) { width: 150px; }  /* IP */
+th:nth-child(3), td:nth-child(3) { width: 140px; }  /* Location */
+th:nth-child(4), td:nth-child(4) { width: 120px; }  /* Status */
+th:nth-child(5), td:nth-child(5) { width: 90px; }   /* Score */
+th:nth-child(6), td:nth-child(6) { width: 140px; }  /* Action */
 
 /* ===== SCORE FONT ===== */
 td:nth-child(4) {
@@ -407,13 +408,13 @@ td button:last-child {
 /* ===== LAYOUT ===== */
 .traffic-container {
     display: flex;
-    flex-direction: column;   /* 🔥 THIS IS KEY */
+    flex-direction: column;  
     gap: 20px;
 }
 
 /* ===== TABLE ===== */
 .traffic-table {
-    width: 100%;
+    width: 97%;
 }
 
 .table-wrapper {
