@@ -6,7 +6,6 @@ import numpy as np
 import time
 import os
 import threading
-import random
 import subprocess
 
 app = FastAPI()
@@ -62,13 +61,13 @@ def process_line(line):
         return
 
     if log.get("event_type") not in [
-    "flow",
-    "alert",
-    "dns",
-    "http",
-    "tls"
-]:
-    return
+        "flow",
+        "alert",
+        "dns",
+        "http",
+        "tls"
+    ]:
+        return
 
     src_ip = log.get("src_ip", "unknown")
 
@@ -260,7 +259,6 @@ def retrain_model():
     print("🔄 Retraining AI model...")
 
     # simulate training time
-    import time
     time.sleep(2)
 
     print("✅ Model updated")
