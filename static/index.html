@@ -103,20 +103,14 @@ body::after {
 
 /* ===== MAIN LAYOUT ===== */
 .main {
-    width: calc(100% - 260px);
-    max-width: 1400px;
-
-    margin: 0 auto;          /*  KEEP CENTER */
+    margin-left: 240px;
     padding: 20px 30px;
-
-    transition: 0.3s;
+    transition: all 0.3s ease;
 }
-
-/* sidebar closed */
+    
+/* sidebar collapsed */
 .main.full {
-    width: calc(100% - 80px);
-
-    margin: 0 auto;          /*  STILL CENTER */
+    margin-left: 100px;    /* smaller sidebar */
 }
 
 /* REMOVE this gap */
