@@ -55,8 +55,14 @@ body::after {
 
 /* SIDEBAR */
 .sidebar {
-    width:200px; height:100vh; position:fixed;
-    background:#0f172a; padding:20px;
+    width:200px; 
+    height:100vh; 
+    position:fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    background:#0f172a; 
+    padding:20px;
 }
 .sidebar a { display:block; padding:10px; color:#94a3b8; cursor:pointer; }
 .sidebar a:hover { background:#1e293b; }
@@ -85,8 +91,8 @@ body::after {
     width: 60px;   /*  better than 50 (icons not cramped) */
 }
 
-.sidebar.collapsed .icon,
- .sidebar.closed .text {
+.sidebar.closed .icon,
+.sidebar.closed .text {
     display: none;
 }
 
@@ -97,15 +103,20 @@ body::after {
 
 /* ===== MAIN LAYOUT ===== */
 .main {
-    margin-left: 240px;   /* 200 sidebar + 40px gap */
+    width: calc(100% - 260px);
+    max-width: 1400px;
+
+    margin: 0 auto;          /*  KEEP CENTER */
     padding: 20px 30px;
-    max-width: 1100px;    /* prevent over-wide layout */
+
     transition: 0.3s;
 }
 
-/* match collapsed sidebar width */
+/* sidebar closed */
 .main.full {
-    margin-left: 100px;   /* 60 sidebar + 40px gap */
+    width: calc(100% - 80px);
+
+    margin: 0 auto;          /*  STILL CENTER */
 }
 
 /* REMOVE this gap */
