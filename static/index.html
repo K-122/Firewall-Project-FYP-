@@ -114,17 +114,23 @@ body::after {
 
 /* MAIN LAYOUT */
 
+/* =========================
+   MAIN CONTENT
+========================= */
 .main {
+    width: calc(100% - 300px);
     margin-left: 240px;
     padding: 20px 30px;
     transition: all 0.3s ease;
+    box-sizing: border-box;
 }
 
-/* DO NOT MOVE CONTENT */
+/* sidebar collapsed */
 .main.full {
-    margin-left: 130px;
+    width: calc(100% - 180px);
+    margin-left: 120px;
 }
-
+    
 /* remove extra page gap */
 .page {
     padding-left: 0;
