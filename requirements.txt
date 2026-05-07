@@ -4,3 +4,12 @@ pandas
 numpy
 joblib
 requests
+fastapi
+uvicorn
+numpy
+pandas
+tensorflow
+joblib
+scikit-learn
+requests
+python-multipart
