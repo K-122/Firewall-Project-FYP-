@@ -7,6 +7,7 @@ import time
 import os
 import threading
 import random
+import subprocess
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -43,8 +44,18 @@ def block_ip(ip):
         print(f"🚫 (FAKE) Blocked IP: {ip}")
         return
 
-    print(f"🚨 Blocking IP: {ip}")
-    os.system(f"sudo iptables -A INPUT -s {ip} -j DROP")
+   print(f"🚨 Blocking IP: {ip}")
+
+subprocess.run([
+    "sudo",
+    "iptables",
+    "-A",
+    "INPUT",
+    "-s",
+    ip,
+    "-j",
+    "DROP"
+])
 # =========================
 # PROCESS LOG LINE
 # =========================
@@ -72,17 +83,32 @@ def process_line(line):
     else:
         status = "NORMAL"
 
-    print(f"🌐 {src_ip} | {status} | {final_score:.3f}")
+   print(f"🌐 {src_ip} | {status} | {final_score:.3f}")
 
-    record = {
-        "ip": src_ip,
-        "final": float(final_score),
-        "status": status,
-        "time": time.strftime("%H:%M:%S"),
-        "blocked": src_ip in blocked_ips
-    }
+record = {
+    "ip": src_ip,
 
-    data_store.append(record)
+    "final": float(final_score),
+    "score": float(final_score),
+
+    "status": status,
+
+    "attack_type":
+        "SQL_INJECTION" if final_score > 0.85 else
+        "DDOS" if final_score > 0.7 else
+        "BRUTE_FORCE" if final_score > 0.5 else
+        "NORMAL",
+
+    "time": time.strftime("%H:%M:%S"),
+
+    "location": "Unknown",
+    "blocked": src_ip in blocked_ips
+}
+
+data_store.append(record)
+
+# keep latest 1000 only
+data_store[:] = data_store[-1000:]
 
     if len(data_store) > 1000:
         data_store.pop(0)
@@ -129,39 +155,62 @@ def monitor():
 # FAKE DATA (CLOUD MODE)
 # =========================
 def fake_generator():
+
     print("⚡ Running in CLOUD mode (fake data)...")
 
     while True:
+
         status = random.choices(
             ["NORMAL", "SUSPICIOUS", "ATTACK"],
             weights=[0.7, 0.2, 0.1]
         )[0]
 
+        score = round(random.uniform(0.1, 1.0), 3)
+
         record = {
-            "ip": f"192.168.1.{random.randint(1,255)}",
-            "final": round(random.uniform(0.1, 1.0), 3),
+
+           "ip": ".".join([
+    str(random.randint(1, 255)),
+    str(random.randint(1, 255)),
+    str(random.randint(1, 255)),
+    str(random.randint(1, 255))
+]),
+
+            "final": score,
+            "score": score,
+
             "status": status,
+
+            "attack_type":
+                "SQL_INJECTION" if score > 0.85 else
+                "DDOS" if score > 0.7 else
+                "BRUTE_FORCE" if score > 0.5 else
+                "NORMAL",
+
             "time": time.strftime("%H:%M:%S"),
-             "blocked": False
+
+            "location": "",
+
+            "blocked": False
         }
 
         data_store.append(record)
 
-        if len(data_store) > 1000:
-            data_store.pop(0)
+        data_store[:] = data_store[-1000:]
 
         time.sleep(2)
-
 # =========================
 # START SYSTEM
 # =========================
 @app.on_event("startup")
 def startup():
+
+    data_store.clear()
+
     if USE_FAKE:
         threading.Thread(target=fake_generator, daemon=True).start()
     else:
         threading.Thread(target=monitor, daemon=True).start()
-
 # =========================
 # API ROUTES
 # =========================
@@ -175,19 +224,36 @@ def get_data():
 
 @app.get("/incidents")
 def get_incidents():
+
     recent = data_store[-200:]
 
-    result = [
-        r for r in recent
-        if r["status"] in ["ATTACK", "SUSPICIOUS"]
-    ][-50:]
+    result = []
 
-    # 🔥 mark blocked
-    for r in result:
-        if r["ip"] in blocked_ips:
-            r["status"] = "BLOCKED"
+    for r in recent:
 
-    return result
+        # =========================
+        # COPY ORIGINAL RECORD
+        # =========================
+        item = r.copy()
+
+        # =========================
+        # SHOW BLOCKED IN UI ONLY
+        # =========================
+        if item["ip"] in blocked_ips:
+            item["status"] = "BLOCKED"
+
+        # =========================
+        # FILTER INCIDENTS
+        # =========================
+        if item["status"] in [
+            "ATTACK",
+            "SUSPICIOUS",
+            "BLOCKED"
+        ]:
+            result.append(item)
+
+    return result[-50:]
+    
 @app.get("/stats")
 def get_stats():
     normal = suspicious = attack = 0
@@ -256,3 +322,16 @@ def api_quarantine(ip: str):
 @app.get("/blocked")
 def get_blocked():
     return list(blocked_ips)
+
+@app.get("/entropy")
+def entropy():
+    total = len(data_store[-200:])
+
+    if total == 0:
+        return {"entropy": 0}
+
+    attack = len([x for x in data_store[-200:] if x["status"] == "ATTACK"])
+
+    value = round((attack / total) * 100, 2)
+
+    return {"entropy": value}
