@@ -7,6 +7,7 @@ import time
 import os
 import threading
 import subprocess
+import requests
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -102,7 +103,7 @@ def process_line(line):
 
         "time": time.strftime("%H:%M:%S"),
 
-        "location": "Unknown",
+        "location": get_location(src_ip),
         "blocked": src_ip in blocked_ips
     }
 
@@ -116,6 +117,33 @@ def process_line(line):
 
         if attack_counter[src_ip] >= 3:
             block_ip(src_ip)
+
+# =========================
+# GET IP LOCATION
+# =========================
+def get_location(ip):
+
+    try:
+        response = requests.get(
+            f"http://ip-api.com/json/{ip}",
+            timeout=2
+        )
+
+        data = response.json()
+
+        if data["status"] == "success":
+            country = data.get("country", "Unknown")
+            city = data.get("city", "")
+
+            if city:
+                return f"{city}, {country}"
+
+            return country
+
+    except:
+        pass
+
+    return "Unknown"
             
 # =========================
 # REAL MONITOR (LOCAL)
