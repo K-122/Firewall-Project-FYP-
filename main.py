@@ -30,32 +30,36 @@ USE_FAKE = not os.path.exists(LOG_FILE)
 # BLOCK IP (LOCAL ONLY)
 # =========================
 def block_ip(ip):
+
     if ip in blocked_ips:
         return
 
     blocked_ips.add(ip)
 
-    # 🔥 UPDATE EXISTING RECORDS
+    # update records
     for r in data_store:
         if r["ip"] == ip:
             r["blocked"] = True
 
+    # fake cloud mode
     if USE_FAKE:
         print(f"🚫 (FAKE) Blocked IP: {ip}")
         return
 
-   print(f"🚨 Blocking IP: {ip}")
+    # local linux firewall
+    print(f"🚨 Blocking IP: {ip}")
 
-subprocess.run([
-    "sudo",
-    "iptables",
-    "-A",
-    "INPUT",
-    "-s",
-    ip,
-    "-j",
-    "DROP"
-])
+    subprocess.run([
+        "sudo",
+        "iptables",
+        "-A",
+        "INPUT",
+        "-s",
+        ip,
+        "-j",
+        "DROP"
+    ])
+    
 # =========================
 # PROCESS LOG LINE
 # =========================
@@ -83,41 +87,39 @@ def process_line(line):
     else:
         status = "NORMAL"
 
-   print(f"🌐 {src_ip} | {status} | {final_score:.3f}")
+    print(f"🌐 {src_ip} | {status} | {final_score:.3f}")
 
-record = {
-    "ip": src_ip,
+    record = {
+        "ip": src_ip,
 
-    "final": float(final_score),
-    "score": float(final_score),
+        "final": float(final_score),
+        "score": float(final_score),
 
-    "status": status,
+        "status": status,
 
-    "attack_type":
-        "SQL_INJECTION" if final_score > 0.85 else
-        "DDOS" if final_score > 0.7 else
-        "BRUTE_FORCE" if final_score > 0.5 else
-        "NORMAL",
+        "attack_type":
+            "SQL_INJECTION" if final_score > 0.85 else
+            "DDOS" if final_score > 0.7 else
+            "BRUTE_FORCE" if final_score > 0.5 else
+            "NORMAL",
 
-    "time": time.strftime("%H:%M:%S"),
+        "time": time.strftime("%H:%M:%S"),
 
-    "location": "Unknown",
-    "blocked": src_ip in blocked_ips
-}
+        "location": "Unknown",
+        "blocked": src_ip in blocked_ips
+    }
 
-data_store.append(record)
+    data_store.append(record)
 
-# keep latest 1000 only
-data_store[:] = data_store[-1000:]
-
-    if len(data_store) > 1000:
-        data_store.pop(0)
+    # keep latest 1000
+    data_store[:] = data_store[-1000:]
 
     if status == "ATTACK":
         attack_counter[src_ip] = attack_counter.get(src_ip, 0) + 1
+
         if attack_counter[src_ip] >= 3:
             block_ip(src_ip)
-
+            
 # =========================
 # REAL MONITOR (LOCAL)
 # =========================
@@ -170,10 +172,10 @@ def fake_generator():
         record = {
 
            "ip": ".".join([
-    str(random.randint(1, 255)),
-    str(random.randint(1, 255)),
-    str(random.randint(1, 255)),
-    str(random.randint(1, 255))
+    str(random.randint(11, 223)),
+    str(random.randint(11, 223)),
+    str(random.randint(11, 223)),
+    str(random.randint(11, 223))
 ]),
 
             "final": score,
