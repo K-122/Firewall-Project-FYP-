@@ -19,13 +19,11 @@ print("🚀 Starting AI Firewall System...")
 print("🧠 Loading AI models...")
 
 lstm_model = tf.keras.models.load_model(
-    "iot_lstm_ids_model.h5",
-    compile=False
+    "iot_lstm_ids_model.keras"
 )
 
 mlp_model = tf.keras.models.load_model(
-    "mlp_iot_model.h5",
-    compile=False
+    "mlp_iot_model.keras"
 )
 
 lstm_scaler = joblib.load(
