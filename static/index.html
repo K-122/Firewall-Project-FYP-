@@ -55,67 +55,23 @@ body::after {
 
 /* SIDEBAR */
 .sidebar {
-    width:200px; 
-    height:100vh; 
-    position:fixed;
-    left: 0;
-    top: 0;
-    z-index: 1000;
-    background:#0f172a; 
-    padding:20px;
-}
-.sidebar a { display:block; padding:10px; color:#94a3b8; cursor:pointer; }
-.sidebar a:hover { background:#1e293b; }
-
-.sidebar {
     width: 200px;
     height: 100vh;
     position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
     background: #0f172a;
     padding: 20px;
-    transition: 0.3s;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
 }
 
+/* logo */
 .logo {
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.sidebar.closed .logo {
-    justify-content: center;   /*  center shark icon */
-}
-
-/* ===== SIDEBAR COLLAPSE ===== */
-.sidebar.closed {
-    width: 60px;   /*  better than 50 (icons not cramped) */
-}
-
-.sidebar.closed .icon,
-.sidebar.closed .text {
-    display: none;
-}
-
-/* center icons when collapsed */
-.sidebar.closed a {
-    justify-content: center;
-}
-
-/* ===== MAIN LAYOUT ===== */
-.main {
-    margin-left: 240px;
-    padding: 20px 30px;
-    transition: all 0.3s ease;
-}
-    
-/* sidebar collapsed */
-.main.full {
-    margin-left: 100px;    /* smaller sidebar */
-}
-
-/* REMOVE this gap */
-.page {
-    padding-left: 0;
 }
 
 /* sidebar links */
@@ -123,9 +79,55 @@ body::after {
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 10px;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 8px;
 }
-    
-/* MAIN */
+
+.sidebar a:hover {
+    background: #1e293b;
+}
+
+/* COLLAPSED SIDEBAR */
+.sidebar.closed {
+    width: 60px;
+}
+
+/* hide text + icons */
+.sidebar.closed .text,
+.sidebar.closed .logo-text {
+    display: none;
+}
+
+/* center remaining icons */
+.sidebar.closed a {
+    justify-content: center;
+}
+
+/* center logo */
+.sidebar.closed .logo {
+    justify-content: center;
+}
+
+
+/* MAIN LAYOUT */
+
+.main {
+    margin-left: 240px;
+    padding: 20px 30px;
+    transition: all 0.3s ease;
+}
+
+/* DO NOT MOVE CONTENT */
+.main.full {
+    margin-left: 240px;
+}
+
+/* remove extra page gap */
+.page {
+    padding-left: 0;
+}
 
 /* CARD */
 .card {
@@ -935,8 +937,12 @@ function showPage(p){
 }
 
 function toggleSidebar() {
-    document.getElementById("sidebar").classList.toggle("closed");
-    document.querySelector(".main").classList.toggle("full");
+
+    document.querySelector(".sidebar")
+        .classList.toggle("closed");
+
+    document.querySelector(".main")
+        .classList.toggle("full");
 }
 
 function updateSecurity(score) {
