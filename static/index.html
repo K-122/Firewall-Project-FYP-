@@ -1080,7 +1080,11 @@ function updateStats(data) {
     let total = data.length;
 
     let highRisk = data.filter(d => d.final > 0.7).length;
-    let mitigated = data.filter(d => d.status === "BLOCKED").length;
+    
+    let mitigated = data.filter(d =>
+    d.blocked === true ||
+    d.status === "BLOCKED"
+).length;
 
     let uptimeSec = Math.floor(performance.now() / 1000);
 
