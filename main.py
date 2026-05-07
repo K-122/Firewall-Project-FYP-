@@ -23,9 +23,6 @@ data_store = []
 attack_counter = {}
 blocked_ips = set()
 
-# Detect if running in Railway (no log file)
-USE_FAKE = False
-
 # =========================
 # BLOCK IP (LOCAL ONLY)
 # =========================
@@ -40,11 +37,6 @@ def block_ip(ip):
     for r in data_store:
         if r["ip"] == ip:
             r["blocked"] = True
-
-    # fake cloud mode
-    if USE_FAKE:
-        print(f"🚫 (FAKE) Blocked IP: {ip}")
-        return
 
     # local linux firewall
     print(f"🚨 Blocking IP: {ip}")
@@ -158,144 +150,6 @@ def monitor():
 
             idle = 0
             process_line(line)
-
-# =========================
-# FAKE DATA (CLOUD MODE)
-# =========================
-def fake_generator():
-
-    print("⚡ Running in CLOUD mode (fake data)...")
-
-    # 🌍 COUNTRY-BASED IP RANGES
-    country_ranges = {
-
-        "United States": [
-            (8, 8),
-            (23, 23),
-            (64, 74),
-            (96, 108),
-            (128, 174),
-            (184, 209)
-        ],
-
-        "China": [
-            (36, 42),
-            (58, 61),
-            (101, 125),
-            (175, 183),
-            (211, 223)
-        ],
-
-        "Japan": [
-            (126, 126),
-            (133, 133),
-            (150, 150),
-            (202, 202),
-            (210, 221)
-        ],
-
-        "Germany": [
-            (31, 31),
-            (37, 37),
-            (46, 46),
-            (51, 53),
-            (85, 91),
-            (185, 193),
-            (217, 217)
-        ],
-
-        "United Kingdom": [
-            (2, 5),
-            (25, 25),
-            (62, 62),
-            (90, 94),
-            (151, 151),
-            (176, 195)
-        ],
-
-        "France": [
-            (82, 82),
-            (86, 86),
-            (163, 163)
-        ],
-
-        "Singapore": [
-            (43, 43),
-            (178, 178)
-        ],
-
-        "Australia": [
-            (103, 103),
-            (203, 203)
-        ],
-
-        "Brazil": [
-            (177, 177),
-            (200, 200)
-        ],
-
-        "South Korea": [
-            (1, 1),
-            (125, 125)
-        ]
-    }
-
-    while True:
-
-        status = random.choices(
-            ["NORMAL", "SUSPICIOUS", "ATTACK"],
-            weights=[0.7, 0.2, 0.1]
-        )[0]
-
-        score = round(random.uniform(0.1, 1.0), 3)
-
-        # 🌍 pick country
-        country = random.choice(list(country_ranges.keys()))
-
-        # 🌍 pick IP range
-        selected_range = random.choice(country_ranges[country])
-
-        first_octet = random.randint(
-            selected_range[0],
-            selected_range[1]
-        )
-
-        ip = ".".join([
-            str(first_octet),
-            str(random.randint(1, 255)),
-            str(random.randint(1, 255)),
-            str(random.randint(1, 255))
-        ])
-
-        record = {
-
-            "ip": ip,
-
-            "final": score,
-            "score": score,
-
-            "status": status,
-
-            "attack_type":
-                "SQL_INJECTION" if score > 0.85 else
-                "DDOS" if score > 0.7 else
-                "BRUTE_FORCE" if score > 0.5 else
-                "NORMAL",
-
-            "time": time.strftime("%H:%M:%S"),
-
-            # 🌍 already known
-            "location": country,
-
-            "blocked": False
-        }
-
-        data_store.append(record)
-
-        # keep latest only
-        data_store[:] = data_store[-1000:]
-
-        time.sleep(2)
         
 # =========================
 # START SYSTEM
