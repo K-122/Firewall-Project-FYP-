@@ -17,14 +17,14 @@ print("🚀 Starting AI Firewall System...")
 # =========================
 # SETTINGS
 # =========================
-LOG_FILE = "/var/log/suricata/eve.json"
+LOG_FILE = "eve.json"
 
 data_store = []
 attack_counter = {}
 blocked_ips = set()
 
 # Detect if running in Railway (no log file)
-USE_FAKE = not os.path.exists(LOG_FILE)
+USE_FAKE = False
 
 # =========================
 # BLOCK IP (LOCAL ONLY)
@@ -69,8 +69,14 @@ def process_line(line):
     except:
         return
 
-    if "flow" not in log:
-        return
+    if log.get("event_type") not in [
+    "flow",
+    "alert",
+    "dns",
+    "http",
+    "tls"
+]:
+    return
 
     src_ip = log.get("src_ip", "unknown")
 
@@ -299,10 +305,11 @@ def startup():
 
     data_store.clear()
 
-    if USE_FAKE:
-        threading.Thread(target=fake_generator, daemon=True).start()
-    else:
-        threading.Thread(target=monitor, daemon=True).start()
+    threading.Thread(
+        target=monitor,
+        daemon=True
+    ).start()
+        
 # =========================
 # API ROUTES
 # =========================
