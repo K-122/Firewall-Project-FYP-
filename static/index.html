@@ -980,7 +980,14 @@ function startScan(){
 
     document.getElementById("status").innerText = "Running";
 
-    startMainLoop();   // 🔥 start system loop
+    // 🔥 run immediately
+    loadData();
+    loadAlerts();
+    loadGraph();
+    loadTrafficGraph();
+
+    // 🔥 start loop
+    startMainLoop();
 }
 
 function stopScan(){
@@ -1017,7 +1024,16 @@ async function loadGraph() {
     if (!data) return;
 
     // ❌ allow empty array to retry later
-    if (data.length === 0) return;
+    if (data.length === 0) {
+
+    if (chart) {
+        chart.data.labels = [];
+        chart.data.datasets[0].data = [];
+        chart.update();
+    }
+
+    return;
+}
 
     let last = data.slice(-20);
 
@@ -1582,7 +1598,7 @@ async function loadData(){
     // =========================
     // 📋 BUILD TABLE
     // =========================
-    d.forEach(x => {
+   d.slice().reverse().forEach(x => {
 
         if (x.status === "ATTACK") attack++;
 
@@ -1608,7 +1624,11 @@ async function loadData(){
     // 📋 UPDATE TABLE
     // =========================
     document.getElementById("table").innerHTML = html;
-
+    let wrapper = document.querySelector(".table-wrapper");
+    
+    if (wrapper) {
+        wrapper.scrollTop = 0;
+    }
     // =========================
     // 📊 UPDATE STATS
     // =========================
