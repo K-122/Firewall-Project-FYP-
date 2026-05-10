@@ -115,22 +115,24 @@ def process_line(line):
 
     try:
         log = json.loads(line)
+
     except:
         return
 
+    # only process flow events
     if "flow" not in log:
         return
 
     src_ip = log.get("src_ip", "unknown")
     dest_ip = log.get("dest_ip", "unknown")
 
-    # Prefer public IP
+    # prefer public IP
     if src_ip.startswith(("192.168", "10.", "172.")):
         ip = dest_ip
     else:
         ip = src_ip
 
-    # Skip IPv6
+    # skip IPv6
     if ":" in ip:
         return
 
@@ -149,14 +151,16 @@ def process_line(line):
 
     df = pd.DataFrame(data)
 
+    # =========================
+    # SCALE FEATURES
+    # =========================
     try:
-        # =========================
-        # SCALE FEATURES
-        # =========================
+
         X_lstm = lstm_scaler.transform(df)
         X_mlp = mlp_scaler.transform(df)
 
     except Exception as e:
+
         print("Scaling error:", e)
         return
 
@@ -177,10 +181,11 @@ def process_line(line):
         -1
     )
 
+    # =========================
+    # AI PREDICTION
+    # =========================
     try:
-        # =========================
-        # AI PREDICTION
-        # =========================
+
         lstm_score = fast_lstm(
             X_seq
         )[0][0].numpy()
@@ -190,6 +195,7 @@ def process_line(line):
         )[0][0].numpy()
 
     except Exception as e:
+
         print("Prediction error:", e)
         return
 
@@ -206,12 +212,15 @@ def process_line(line):
     # AI DECISION
     # =========================
     if final_score > 0.7:
+
         status = "ATTACK"
 
     elif final_score > 0.4:
+
         status = "SUSPICIOUS"
 
     else:
+
         status = "NORMAL"
 
     print(
@@ -226,6 +235,7 @@ def process_line(line):
     # SAVE RECORD
     # =========================
     record = {
+
         "ip": ip,
 
         "final": float(final_score),
@@ -249,23 +259,28 @@ def process_line(line):
         "blocked": ip in blocked_ips
     }
 
+    # save record
     data_store.append(record)
 
-# 🔥 LIVE WEBSOCKET UPDATE
-try:
+    # keep latest only
+    data_store[:] = data_store[-1000:]
 
-    loop = asyncio.get_event_loop()
+    # =========================
+    # 🔥 LIVE WEBSOCKET UPDATE
+    # =========================
+    try:
 
-    if loop.is_running():
+        loop = asyncio.get_event_loop()
 
-        asyncio.create_task(
-            broadcast(record)
-        )
+        if loop.is_running():
 
-except:
-    pass
+            asyncio.create_task(
+                broadcast(record)
+            )
 
-data_store[:] = data_store[-1000:]
+    except Exception as e:
+
+        print("WebSocket error:", e)
 
     # =========================
     # AUTO BLOCKING
@@ -277,8 +292,8 @@ data_store[:] = data_store[-1000:]
         )
 
         if attack_counter[ip] >= 3:
-            block_ip(ip)
 
+            block_ip(ip)
 # =========================
 # GET IP LOCATION
 # =========================
