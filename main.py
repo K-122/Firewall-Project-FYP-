@@ -244,7 +244,7 @@ def process_line(line):
 
         "status": status,
 
-        "attack_type": "AI_DETECTED",
+        "attack_type": detect_attack_type(final_score),
 
         "severity": (
             3 if status == "ATTACK"
@@ -294,30 +294,69 @@ def process_line(line):
         if attack_counter[ip] >= 3:
 
             block_ip(ip)
+
+# =========================
+# DETECT ATTACK TYPE
+# =========================
+def detect_attack_type(score):
+
+    if score > 0.9:
+        return "SQL_INJECTION"
+
+    elif score > 0.8:
+        return "DDOS_ATTACK"
+
+    elif score > 0.7:
+        return "BRUTE_FORCE"
+
+    elif score > 0.5:
+        return "PORT_SCAN"
+
+    elif score > 0.3:
+        return "SUSPICIOUS_TRAFFIC"
+
+    return "NORMAL_TRAFFIC"
+
 # =========================
 # GET IP LOCATION
 # =========================
+location_cache = {}
+
 def get_location(ip):
 
+    # cache
+    if ip in location_cache:
+        return location_cache[ip]
+
+    # local/private IP
+    if ip.startswith(("192.168", "10.", "172.")):
+        return "Local Network"
+
+    # multicast
+    if ip.startswith(("224.", "239.")):
+        return "Multicast"
+
     try:
+
         response = requests.get(
-            f"http://ip-api.com/json/{ip}",
-            timeout=2
+            f"https://ipwho.is/{ip}",
+            timeout=5
         )
 
         data = response.json()
 
-        if data["status"] == "success":
-            country = data.get("country", "Unknown")
-            city = data.get("city", "")
+        if data.get("success"):
 
-            if city:
-                return f"{city}, {country}"
+            country = data.get("country")
 
-            return country
+            if country:
 
-    except:
-        pass
+                location_cache[ip] = country
+                return country
+
+    except Exception as e:
+
+        print("Location error:", e)
 
     return "Unknown"
             
