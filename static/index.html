@@ -1016,10 +1016,6 @@ function addLog(msg){
 let chart;
 
 async function loadGraph() {
-
-    let res = await fetch("/data");
-    let data = await res.json();
-
     // ✅ ONLY block if truly invalid
     if (!data) return;
 
@@ -1993,24 +1989,16 @@ function startMainLoop() {
 
     mainLoop = setInterval(() => {
 
-        if (!systemActive) return;   // 🚫 STOP everything
+        if (!systemActive) return;
 
-        let active = document.querySelector(".page:not(.hidden)");
+        let active =
+            document.querySelector(".page:not(.hidden)");
 
-        loadData();
+        // 🔥 only refresh alerts/incidents
         loadAlerts();
-        updateStats(globalData);
-        
-        if (active && active.id === "dashboard") {
-            loadGraph();
-        }
-
-        if (active && active.id === "traffic") {
-            loadTrafficGraph();
-        }
 
         if (active && active.id === "incidents") {
-        loadIncidentsPage();  
+            loadIncidentsPage();
         }
 
     }, 2000);
@@ -2018,7 +2006,7 @@ function startMainLoop() {
 
 window.onload = () => {
 
-    loadData();
+await loadData();
     loadAlerts();
 
     // connect websocket
