@@ -1550,21 +1550,28 @@ function connectWebSocket() {
     };
 
     socket.onmessage = (event) => {
-
+    
         let newLog = JSON.parse(event.data);
-
-        // 🔥 add newest log
+    
+        // 🔥 newest first
         globalData.unshift(newLog);
-
-        // limit size
+    
+        // limit memory
         if (globalData.length > 100) {
             globalData.pop();
         }
-
-        // 🔥 instant update
-        loadData();
+    
+        // 🔥 update table directly
+        renderTable();
+    
+        // 🔥 update stats
+        updateStats(globalData);
+    
+        // 🔥 update charts
         loadGraph();
         loadTrafficGraph();
+    
+        // 🔥 update alerts
         loadAlerts();
     };
 
@@ -1725,6 +1732,54 @@ async function loadData(){
     loadGraph();
     updateStats(d)
 }
+
+function renderTable() {
+
+    let html = "";
+
+    let attack = 0;
+
+    globalData.forEach(x => {
+
+        if (x.status === "ATTACK") {
+            attack++;
+        }
+
+        html += `
+        <tr>
+            <td>${x.time}</td>
+            <td>${x.ip}</td>
+            <td>${x.location}</td>
+
+            <td class="${x.status}">
+                ${x.status}
+            </td>
+
+            <td>${x.final.toFixed(3)}</td>
+
+            <td class="action-cell">
+                <button onclick="blockIP('${x.ip}')"
+                        class="btn stop">
+                    Deny
+                </button>
+
+                <button onclick="allowIP('${x.ip}')"
+                        class="btn start">
+                    Allow
+                </button>
+            </td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("table").innerHTML = html;
+
+    document.getElementById("total").innerText =
+        globalData.length;
+
+    document.getElementById("attacks").innerText =
+        attack;
+}    
     
 // ALERTS
 async function loadAlerts(){
