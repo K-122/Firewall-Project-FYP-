@@ -1535,8 +1535,48 @@ async function quarantineIP(ip) {
     
 // DATA
 let globalData = [];
+let socket;
 let ipCache = {};  // ✅ cache to avoid repeated API calls
 
+function connectWebSocket() {
+
+    socket = new WebSocket(
+        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`
+    );
+
+    socket.onopen = () => {
+
+        console.log("✅ WebSocket connected");
+    };
+
+    socket.onmessage = (event) => {
+
+        let newLog = JSON.parse(event.data);
+
+        // 🔥 add newest log
+        globalData.unshift(newLog);
+
+        // limit size
+        if (globalData.length > 100) {
+            globalData.pop();
+        }
+
+        // 🔥 instant update
+        loadData();
+        loadGraph();
+        loadTrafficGraph();
+        loadAlerts();
+    };
+
+    socket.onclose = () => {
+
+        console.log("❌ WebSocket disconnected");
+
+        // auto reconnect
+        setTimeout(connectWebSocket, 3000);
+    };
+}
+    
 // =========================
 // 🌍 IP GEOLOCATION
 // =========================
@@ -1922,8 +1962,12 @@ function startMainLoop() {
 }
 
 window.onload = () => {
+
     loadData();
     loadAlerts();
+
+    // connect websocket
+    connectWebSocket();
 };
     
 </script>
