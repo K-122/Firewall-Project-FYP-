@@ -328,14 +328,6 @@ def get_location(ip):
     if ip in location_cache:
         return location_cache[ip]
 
-    # local/private IP
-    if ip.startswith(("192.168", "10.", "172.")):
-        return "Local Network"
-
-    # multicast
-    if ip.startswith(("224.", "239.")):
-        return "Multicast"
-
     try:
 
         response = requests.get(
@@ -345,6 +337,7 @@ def get_location(ip):
 
         data = response.json()
 
+        # valid public IP
         if data.get("success"):
 
             country = data.get("country")
