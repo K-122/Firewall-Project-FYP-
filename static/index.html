@@ -1016,71 +1016,86 @@ function addLog(msg){
 let chart;
 
 async function loadGraph() {
+
+    let data = globalData;
+
     // ✅ ONLY block if truly invalid
     if (!data) return;
 
-    // ❌ allow empty array to retry later
+    // allow empty array
     if (data.length === 0) {
 
-    if (chart) {
-        chart.data.labels = [];
-        chart.data.datasets[0].data = [];
-        chart.update();
-    }
+        if (chart) {
+            chart.data.labels = [];
+            chart.data.datasets[0].data = [];
+            chart.update();
+        }
 
-    return;
-}
+        return;
+    }
 
     let last = data.slice(-20);
 
-    // ✅ SAFE FIELD MAPPING
-    let labels = last.map(d => d.time || d.timestamp || "");
-    let scores = last.map(d => d.final || d.score || 0);
+    let labels = last.map(d => d.time || "");
+    let scores = last.map(d => d.final || 0);
 
     const ctx = document.getElementById("chart");
     if (!ctx) return;
 
-    // =========================
-    // 🆕 CREATE ONLY WHEN DATA EXISTS
-    // =========================
+    // CREATE
     if (!chart) {
+
         chart = new Chart(ctx, {
             type: "bar",
+
             data: {
                 labels: labels,
+
                 datasets: [{
                     label: "Threat Ingress",
                     data: scores,
+
                     backgroundColor: scores.map((v, i) =>
                         i === Math.floor(scores.length / 2)
                             ? "#7c3aed"
                             : "#374151"
                     ),
+
                     borderRadius: 4
                 }]
             },
+
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: false,
-                plugins: { legend: { display: false } }
+
+                plugins: {
+                    legend: { display: false }
+                },
+
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
             }
         });
 
         return;
     }
 
-    // =========================
-    // 🔄 UPDATE (NO DESTROY)
-    // =========================
+    // UPDATE
     chart.data.labels = labels;
     chart.data.datasets[0].data = scores;
 
-    chart.data.datasets[0].backgroundColor = scores.map((v, i) =>
-        i === Math.floor(scores.length / 2)
-            ? "#7c3aed"
-            : "#374151"
-    );
+    chart.data.datasets[0].backgroundColor =
+        scores.map((v, i) =>
+            i === Math.floor(scores.length / 2)
+                ? "#7c3aed"
+                : "#374151"
+        );
 
     chart.update('none');
 }
