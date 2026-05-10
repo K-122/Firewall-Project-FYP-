@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi import WebSocket
+from fastapi import WebSocketDisconnect
 import json
 import numpy as np
 import time
@@ -11,6 +13,8 @@ import requests
 import pandas as pd
 import tensorflow as tf
 import joblib
+import asyncio
+
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -46,6 +50,24 @@ attack_counter = {}
 blocked_ips = set()
 SEQUENCE_LENGTH = 10
 sequence_buffer = []
+clients = []  # websocket clients
+
+async def broadcast(record):
+
+    disconnected = []
+
+    for client in clients:
+
+        try:
+            await client.send_json(record)
+
+        except:
+            disconnected.append(client)
+
+    for dc in disconnected:
+
+        if dc in clients:
+            clients.remove(dc)
 
 # =========================
 # BLOCK IP (LOCAL ONLY)
@@ -229,7 +251,21 @@ def process_line(line):
 
     data_store.append(record)
 
-    data_store[:] = data_store[-1000:]
+# 🔥 LIVE WEBSOCKET UPDATE
+try:
+
+    loop = asyncio.get_event_loop()
+
+    if loop.is_running():
+
+        asyncio.create_task(
+            broadcast(record)
+        )
+
+except:
+    pass
+
+data_store[:] = data_store[-1000:]
 
     # =========================
     # AUTO BLOCKING
@@ -382,6 +418,30 @@ def get_latest():
     if not data_store:
         return {}
     return data_store[-1]
+
+# =========================
+# WEBSOCKET
+# =========================
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+
+    await websocket.accept()
+
+    clients.append(websocket)
+
+    print("✅ WebSocket connected")
+
+    try:
+
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+
+        print("❌ WebSocket disconnected")
+
+        if websocket in clients:
+            clients.remove(websocket)
 
 
 # =========================
