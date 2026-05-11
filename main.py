@@ -439,7 +439,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
         while True:
 
-            await asyncio.sleep(60)
+            # keep connection alive
+            await websocket.receive_text()
 
     except WebSocketDisconnect:
 
