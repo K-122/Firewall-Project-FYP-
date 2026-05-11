@@ -272,25 +272,8 @@ def process_line(line):
 
     # keep latest only
     data_store[:] = data_store[-300:]
-
-    # =========================
-    # 🔥 LIVE WEBSOCKET UPDATE
-    # =========================
-    try:
-
-        loop = asyncio.get_running_loop()
-
-        asyncio.create_task(
-            broadcast(record)
-        )
-
-    except RuntimeError:
-        pass
-
-    except Exception as e:
-
-        print("WebSocket error:", e)
-
+    return record 
+    
     # =========================
     # AUTO BLOCKING
     # =========================
@@ -527,6 +510,23 @@ async def push_log(request: Request):
 
     data = await request.json()
 
-    process_line(json.dumps(data))
+    try:
 
-    return {"status": "received"}
+        record = process_line(
+            json.dumps(data)
+        )
+
+        # live websocket update
+        if record:
+
+            await broadcast(record)
+
+        return {
+            "status": "received"
+        }
+
+    except Exception as e:
+
+        return {
+            "error": str(e)
+        }
