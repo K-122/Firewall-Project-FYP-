@@ -15,6 +15,7 @@ import tensorflow as tf
 import joblib
 import asyncio
 
+active_connections = []
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -430,13 +431,14 @@ async def websocket_endpoint(websocket: WebSocket):
 
     await websocket.accept()
 
-    clients.append(websocket)
+    active_connections.append(websocket)
 
     print("✅ WebSocket connected")
 
     try:
 
         while True:
+
             await asyncio.sleep(60)
 
     except WebSocketDisconnect:
@@ -445,8 +447,27 @@ async def websocket_endpoint(websocket: WebSocket):
 
     finally:
 
-        if websocket in clients:
-            clients.remove(websocket)
+        if websocket in active_connections:
+
+            active_connections.remove(websocket)
+
+async def broadcast(data):
+
+    disconnected = []
+
+    for ws in active_connections:
+
+        try:
+
+            await ws.send_json(data)
+
+        except:
+
+            disconnected.append(ws)
+
+    for ws in disconnected:
+
+        active_connections.remove(ws)
 
 # =========================
 # MANUAL ACTIONS API
@@ -570,3 +591,5 @@ async def get_metrics():
         "false_positive_rate":
             false_positive_rate
     }
+
+
