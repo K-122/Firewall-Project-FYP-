@@ -84,19 +84,22 @@ def block_ip(ip):
         if r["ip"] == ip:
             r["blocked"] = True
 
-    # local linux firewall
     print(f"🚨 Blocking IP: {ip}")
 
-    subprocess.run([
-        "sudo",
-        "iptables",
-        "-A",
-        "INPUT",
-        "-s",
-        ip,
-        "-j",
-        "DROP"
-    ])
+    # 🔥 run firewall command in background
+    threading.Thread(
+        target=lambda: subprocess.run([
+            "sudo",
+            "iptables",
+            "-A",
+            "INPUT",
+            "-s",
+            ip,
+            "-j",
+            "DROP"
+        ]),
+        daemon=True
+    ).start()
 
 @tf.function
 def fast_lstm(x):
@@ -254,7 +257,7 @@ def process_line(line):
 
         "time": time.strftime("%H:%M:%S"),
 
-        "location": get_location(ip),
+        "location": "Loading",
 
         "blocked": ip in blocked_ips
     }
