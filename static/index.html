@@ -937,9 +937,9 @@ function showPage(p){
     if (p === "dashboard") {
         loadGraph();
     }
-    if (p === "traffic") {
-        loadTrafficGraph();
-    }
+    if (p === "traffic" && !trafficChart) {
+    loadTrafficGraph();
+}
     if (p === "incidents") {
     loadIncidentsPage();
 }
@@ -1052,7 +1052,7 @@ async function loadGraph() {
 
     let last = data.slice(0, 20).reverse();
 
-    let labels = last.map((d, i) => i + 1);
+    let labels = last.map(d => d.time);
     let scores = last.map(d => d.final || 0);
 
     const ctx = document.getElementById("chart");
@@ -1578,22 +1578,33 @@ function connectWebSocket() {
         console.log("✅ WebSocket connected");
     };
 
-    socket.onmessage = async (event) => {
+  socket.onmessage = (event) => {
 
     let newLog = JSON.parse(event.data);
 
-    // 🌍 resolve country first
-    newLog.location = await getLocation(newLog.ip);
+    // placeholder first
+    newLog.location = "Loading";
 
-    // newest first
+    // insert immediately
     globalData.unshift(newLog);
 
     // limit memory
-    if (globalData.length > 30) {
+    if (globalData.length > 15) {
         globalData.pop();
     }
 
-    // throttled table update
+    // async country lookup (NON-BLOCKING)
+    getLocation(newLog.ip).then(loc => {
+
+        newLog.location = loc;
+
+        // update table only
+        renderTable();
+    });
+
+    // =========================
+    // TABLE UPDATE
+    // =========================
     if (!window.tableThrottle) {
 
         window.tableThrottle = true;
@@ -1606,11 +1617,25 @@ function connectWebSocket() {
         });
     }
 
+    // =========================
+    // STATS UPDATE
+    // =========================
     updateStats(globalData);
 
-    requestAnimationFrame(() => {
-        loadGraph();
-    });
+    // =========================
+    // GRAPH UPDATE
+    // =========================
+    if (!window.graphThrottle) {
+
+        window.graphThrottle = true;
+
+        requestAnimationFrame(() => {
+
+            loadGraph();
+
+            window.graphThrottle = false;
+        });
+    }
 };
 
     socket.onclose = () => {
@@ -1625,14 +1650,30 @@ function connectWebSocket() {
 // 🌍 IP GEOLOCATION
 // =========================
 function isPrivateIP(ip) {
-    return ip.startsWith("192.168.") ||
-           ip.startsWith("10.") ||
-           ip.startsWith("172.");
-}
 
+    return (
+        ip.startsWith("192.168.") ||
+        ip.startsWith("10.") ||
+        ip.startsWith("172.") ||
+
+        // multicast
+        ip.startsWith("224.") ||
+        ip.startsWith("239.") ||
+
+        // localhost
+        ip.startsWith("127.")
+    );
+}
+    
 async function getLocation(ip) {
 
-    if (isPrivateIP(ip)) return "Local Network";
+    if (ip.startsWith("224.") || ip.startsWith("239.")) {
+    return "Multicast";
+}
+
+    if (isPrivateIP(ip)) {
+        return "Local Network";
+    }
 
     if (ipCache[ip]) return ipCache[ip];
 
@@ -1660,7 +1701,7 @@ async function loadData(){
 
     if (!d) return;
 
-   globalData = d.slice(0, 30);
+   globalData = d.slice(0, 15);
 
     let html = "";
     let attack = 0;
@@ -1673,16 +1714,21 @@ async function loadData(){
     // =========================
     // 🌍 GET LOCATIONS (FAST)
     // =========================
-    await Promise.all(d.map(async (x) => {
-        if (!x.location) {
-            x.location = await getLocation(x.ip);
-        }
-    }));
+   for (let x of d.slice(0, 15)) {
+
+    if (
+        !x.location ||
+        x.location === "Loading"
+    ) {
+
+        x.location = await getLocation(x.ip);
+    }
+}
 
     // =========================
     // 📋 BUILD TABLE
     // =========================
-   d.slice(0, 30).forEach(x => {
+   d.slice(0, 15).forEach(x => {
 
         if (x.status === "ATTACK") attack++;
 
