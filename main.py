@@ -9,7 +9,6 @@ import time
 import os
 import threading
 import subprocess
-import requests
 import pandas as pd
 import tensorflow as tf
 import joblib
@@ -88,18 +87,18 @@ def block_ip(ip):
 
     # 🔥 run firewall command in background
     threading.Thread(
-        target=lambda: subprocess.run([
-            "sudo",
-            "iptables",
-            "-A",
-            "INPUT",
-            "-s",
-            ip,
-            "-j",
-            "DROP"
-        ]),
-        daemon=True
-    ).start()
+    target=lambda: subprocess.run([
+        "sudo",
+        "iptables",
+        "-A",
+        "INPUT",
+        "-s",
+        ip,
+        "-j",
+        "DROP"
+    ], timeout=3),
+    daemon=True
+).start()
 
 @tf.function
 def fast_lstm(x):
@@ -140,6 +139,10 @@ def process_line(line):
         return
 
     flow = log.get("flow", {})
+
+    # 🔥 skip tiny/noisy packets
+    if flow.get("pkts_toserver", 0) < 2:
+        return
 
     # =========================
     # EXTRACT FEATURES
@@ -226,13 +229,14 @@ def process_line(line):
 
         status = "NORMAL"
 
-    print(
-        f"🌐 {ip} | "
-        f"LSTM:{lstm_score:.3f} | "
-        f"MLP:{mlp_score:.3f} | "
-        f"FINAL:{final_score:.3f} | "
-        f"{status}"
-    )
+    # print only abnormal traffic
+    if status != "NORMAL":
+
+        print(
+            f"🌐 {ip} | "
+            f"FINAL:{final_score:.3f} | "
+            f"{status}"
+        )
 
     # =========================
     # SAVE RECORD
@@ -257,6 +261,7 @@ def process_line(line):
 
         "time": time.strftime("%H:%M:%S"),
 
+        # frontend handles geolocation
         "location": "Loading",
 
         "blocked": ip in blocked_ips
@@ -266,20 +271,21 @@ def process_line(line):
     data_store.append(record)
 
     # keep latest only
-    data_store[:] = data_store[-1000:]
+    data_store[:] = data_store[-300:]
 
     # =========================
     # 🔥 LIVE WEBSOCKET UPDATE
     # =========================
     try:
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
-        if loop.is_running():
+        asyncio.create_task(
+            broadcast(record)
+        )
 
-            asyncio.create_task(
-                broadcast(record)
-            )
+    except RuntimeError:
+        pass
 
     except Exception as e:
 
@@ -297,7 +303,7 @@ def process_line(line):
         if attack_counter[ip] >= 3:
 
             block_ip(ip)
-
+            
 # =========================
 # DETECT ATTACK TYPE
 # =========================
@@ -320,41 +326,6 @@ def detect_attack_type(score):
 
     return "NORMAL_TRAFFIC"
 
-# =========================
-# GET IP LOCATION
-# =========================
-location_cache = {}
-
-def get_location(ip):
-
-    # cache
-    if ip in location_cache:
-        return location_cache[ip]
-
-    try:
-
-        response = requests.get(
-            f"https://ipwho.is/{ip}",
-            timeout=5
-        )
-
-        data = response.json()
-
-        # valid public IP
-        if data.get("success"):
-
-            country = data.get("country")
-
-            if country:
-
-                location_cache[ip] = country
-                return country
-
-    except Exception as e:
-
-        print("Location error:", e)
-
-    return "Unknown"
             
 # =========================
 # REAL MONITOR (LOCAL)
@@ -381,9 +352,9 @@ def monitor():
 
             if not line:
                 idle += 1
-                if idle % 25 == 0:
+                if idle % 100 == 0:
                     print("⏳ Waiting for new logs...")
-                time.sleep(0.2)
+                time.sleep(0.5)
                 continue
 
             idle = 0
@@ -484,15 +455,16 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
 
         while True:
-            await websocket.receive_text()
+            await asyncio.sleep(60)
 
     except WebSocketDisconnect:
 
         print("❌ WebSocket disconnected")
 
+    finally:
+
         if websocket in clients:
             clients.remove(websocket)
-
 
 # =========================
 # MANUAL ACTIONS API
