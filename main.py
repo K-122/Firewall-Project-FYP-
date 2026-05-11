@@ -141,7 +141,7 @@ def process_line(line):
     flow = log.get("flow", {})
 
     # 🔥 skip tiny/noisy packets
-    if flow.get("pkts_toserver", 0) < 2:
+    if flow.get("pkts_toserver", 0) < 1:
         return
 
     # =========================
@@ -272,7 +272,6 @@ def process_line(line):
 
     # keep latest only
     data_store[:] = data_store[-300:]
-    return record 
     
     # =========================
     # AUTO BLOCKING
@@ -286,7 +285,7 @@ def process_line(line):
         if attack_counter[ip] >= 3:
 
             block_ip(ip)
-            
+    return record
 # =========================
 # DETECT ATTACK TYPE
 # =========================
