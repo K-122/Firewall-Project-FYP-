@@ -1564,7 +1564,7 @@ async function quarantineIP(ip) {
 // DATA
 let globalData = [];
 let socket;
-let ipCache = {};  // ✅ cache to avoid repeated API calls
+let ipCache = {};
 
 function connectWebSocket() {
 
@@ -1577,36 +1577,45 @@ function connectWebSocket() {
         console.log("✅ WebSocket connected");
     };
 
-socket.onmessage = (event) => {
-    
-    let newLog = JSON.parse(event.data);
+    socket.onmessage = (event) => {
 
-    // newest first
-    globalData.unshift(newLog);
+        let newLog = JSON.parse(event.data);
 
-    // limit memory
-    if (globalData.length > 100) {
-        globalData.pop();
-    }
+        // newest first
+        globalData.unshift(newLog);
 
-    // update table
-    renderTable();
+        // limit memory
+        if (globalData.length > 100) {
+            globalData.pop();
+        }
 
-    // update stats
-    updateStats(globalData);
+        // 🔥 THROTTLED TABLE UPDATE
+        if (!window.tableThrottle) {
 
-    // update main graph only
-    loadGraph();
+            window.tableThrottle = true;
 
-    // alerts
-    loadAlerts();
-};
+            setTimeout(() => {
+
+                renderTable();
+
+                window.tableThrottle = false;
+
+            }, 500);
+        }
+
+        // 🔥 lightweight stats
+        updateStats(globalData);
+
+        // 🔥 smooth graph update
+        requestAnimationFrame(() => {
+            loadGraph();
+        });
+    };
 
     socket.onclose = () => {
 
         console.log("❌ WebSocket disconnected");
 
-        // auto reconnect
         setTimeout(connectWebSocket, 3000);
     };
 }
