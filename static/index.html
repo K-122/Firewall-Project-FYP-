@@ -1050,9 +1050,9 @@ async function loadGraph() {
         return;
     }
 
-    let last = data.slice(-20);
+    let last = data.slice(0, 20).reverse();
 
-    let labels = last.map(d => d.time || "");
+    let labels = last.map((d, i) => i + 1);
     let scores = last.map(d => d.final || 0);
 
     const ctx = document.getElementById("chart");
@@ -1565,7 +1565,8 @@ async function quarantineIP(ip) {
 let globalData = [];
 let socket;
 let ipCache = {};
-
+let startTime = Date.now();
+    
 function connectWebSocket() {
 
     socket = new WebSocket(
@@ -1577,40 +1578,40 @@ function connectWebSocket() {
         console.log("✅ WebSocket connected");
     };
 
-    socket.onmessage = (event) => {
+    socket.onmessage = async (event) => {
 
-        let newLog = JSON.parse(event.data);
+    let newLog = JSON.parse(event.data);
 
-        // newest first
-        globalData.unshift(newLog);
+    // 🌍 resolve country first
+    newLog.location = await getLocation(newLog.ip);
 
-        // limit memory
-        if (globalData.length > 100) {
-            globalData.pop();
-        }
+    // newest first
+    globalData.unshift(newLog);
 
-        // 🔥 THROTTLED TABLE UPDATE
-        if (!window.tableThrottle) {
+    // limit memory
+    if (globalData.length > 30) {
+        globalData.pop();
+    }
 
-            window.tableThrottle = true;
+    // throttled table update
+    if (!window.tableThrottle) {
 
-            setTimeout(() => {
+        window.tableThrottle = true;
 
-                renderTable();
-
-                window.tableThrottle = false;
-
-            }, 500);
-        }
-
-        // 🔥 lightweight stats
-        updateStats(globalData);
-
-        // 🔥 smooth graph update
         requestAnimationFrame(() => {
-            loadGraph();
+
+            renderTable();
+
+            window.tableThrottle = false;
         });
-    };
+    }
+
+    updateStats(globalData);
+
+    requestAnimationFrame(() => {
+        loadGraph();
+    });
+};
 
     socket.onclose = () => {
 
@@ -1659,7 +1660,7 @@ async function loadData(){
 
     if (!d) return;
 
-    globalData = d;
+   globalData = d.slice(0, 30);
 
     let html = "";
     let attack = 0;
@@ -1681,7 +1682,7 @@ async function loadData(){
     // =========================
     // 📋 BUILD TABLE
     // =========================
-   d.slice().reverse().forEach(x => {
+   d.slice(0, 30).forEach(x => {
 
         if (x.status === "ATTACK") attack++;
 
@@ -1764,7 +1765,7 @@ async function loadData(){
     // =========================
     // 📊 UPDATE GRAPH LAST
     // =========================
-    loadTrafficGraph();
+    
     loadGraph();
     updateStats(d)
 }
@@ -1775,8 +1776,7 @@ function renderTable() {
 
     let attack = 0;
 
-    globalData.forEach(x => {
-
+    globalData.slice(0, 15).forEach(x => {
         if (x.status === "ATTACK") {
             attack++;
         }
@@ -1818,29 +1818,45 @@ function renderTable() {
 }    
     
 // ALERTS
-async function loadAlerts(){
+async function loadAlerts() {
 
-    let r = await fetch("/incidents");
-    let d = await r.json();
+    try {
 
-    let box = document.getElementById("alerts");
+        let r = await fetch("/incidents");
+        let d = await r.json();
 
-    if (!box) return;
+        let box = document.getElementById("alerts");
 
-    box.innerHTML = "";
+        if (!box) return;
 
-    if (!d || d.length === 0) {
-        box.innerHTML = "<p style='color:#64748b;'>No alerts</p>";
-        return;
+        // no alerts
+        if (!d || d.length === 0) {
+
+            box.innerHTML =
+                "<p style='color:#64748b;'>No alerts</p>";
+
+            return;
+        }
+
+        // build html once (faster)
+        let html = "";
+
+        d.slice(-5).reverse().forEach(a => {
+
+            html += `
+                <div class="alert">
+                    ⚠ ${a.ip} (${a.status})
+                </div>
+            `;
+        });
+
+        // single DOM update
+        box.innerHTML = html;
+
+    } catch (e) {
+
+        console.error("Alert load error:", e);
     }
-
-    d.slice(-5).reverse().forEach(a => {
-        box.innerHTML += `
-            <div class="alert">
-                ⚠ ${a.ip} (${a.status})
-            </div>
-        `;
-    });
 }
 
 function detectAttackType(x) {
