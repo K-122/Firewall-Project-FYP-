@@ -50,24 +50,6 @@ attack_counter = {}
 blocked_ips = set()
 SEQUENCE_LENGTH = 10
 sequence_buffer = []
-clients = []  # websocket clients
-
-async def broadcast(record):
-
-    disconnected = []
-
-    for client in clients:
-
-        try:
-            await client.send_json(record)
-
-        except:
-            disconnected.append(client)
-
-    for dc in disconnected:
-
-        if dc in clients:
-            clients.remove(dc)
 
 # =========================
 # BLOCK IP (LOCAL ONLY)
