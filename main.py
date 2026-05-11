@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
+from fastapi import Request
 import json
 import numpy as np
 import time
@@ -13,7 +14,6 @@ import pandas as pd
 import tensorflow as tf
 import joblib
 import asyncio
-
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -521,3 +521,12 @@ def entropy():
     value = round((attack / total) * 100, 2)
 
     return {"entropy": value}
+
+@app.post("/push")
+async def push_log(request: Request):
+
+    data = await request.json()
+
+    process_line(json.dumps(data))
+
+    return {"status": "received"}
