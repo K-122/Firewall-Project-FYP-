@@ -5,5 +5,4 @@ pandas
 tensorflow-cpu
 joblib
 scikit-learn
-requests
 python-multipart
