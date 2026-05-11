@@ -983,11 +983,27 @@ function startScan(){
     // 🔥 run immediately
     loadData();
     loadAlerts();
+   requestAnimationFrame(() => {
     loadGraph();
-    loadTrafficGraph();
+});
 
     // 🔥 start loop
     startMainLoop();
+}
+
+function startUptimeLoop() {
+
+    setInterval(() => {
+
+        if (!systemActive) return;
+
+        let uptimeSec =
+            Math.floor((Date.now() - startTime) / 1000);
+
+        document.getElementById("uptime").innerText =
+            formatTime(uptimeSec);
+
+    }, 1000);
 }
 
 function stopScan(){
@@ -1113,7 +1129,8 @@ function updateStats(data) {
     d.status === "BLOCKED"
 ).length;
 
-    let uptimeSec = Math.floor(performance.now() / 1000);
+    let uptimeSec =
+    Math.floor((Date.now() - startTime) / 1000);
 
     // ===== UPDATE UI =====
 // ===== SAFE TOTAL =====
@@ -1560,31 +1577,30 @@ function connectWebSocket() {
         console.log("✅ WebSocket connected");
     };
 
-    socket.onmessage = (event) => {
+socket.onmessage = (event) => {
     
-        let newLog = JSON.parse(event.data);
-    
-        // 🔥 newest first
-        globalData.unshift(newLog);
-    
-        // limit memory
-        if (globalData.length > 100) {
-            globalData.pop();
-        }
-    
-        // 🔥 update table directly
-        renderTable();
-    
-        // 🔥 update stats
-        updateStats(globalData);
-    
-        // 🔥 update charts
-        loadGraph();
-        loadTrafficGraph();
-    
-        // 🔥 update alerts
-        loadAlerts();
-    };
+    let newLog = JSON.parse(event.data);
+
+    // newest first
+    globalData.unshift(newLog);
+
+    // limit memory
+    if (globalData.length > 100) {
+        globalData.pop();
+    }
+
+    // update table
+    renderTable();
+
+    // update stats
+    updateStats(globalData);
+
+    // update main graph only
+    loadGraph();
+
+    // alerts
+    loadAlerts();
+};
 
     socket.onclose = () => {
 
@@ -2020,7 +2036,7 @@ function startMainLoop() {
 }
 
 window.onload = () => {
-
+    startUptimeLoop();
      loadData();
     loadAlerts();
 
