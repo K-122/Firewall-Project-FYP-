@@ -1704,6 +1704,15 @@ function connectWebSocket() {
         console.log("✅ WebSocket connected");
     };
 
+    setInterval(() => {
+
+    if (socket.readyState === 1) {
+
+        socket.send("ping");
+    }
+
+    }, 30000);
+
   socket.onmessage = (event) => {
 
     let newLog = JSON.parse(event.data);
