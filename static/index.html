@@ -359,6 +359,33 @@ body::after {
     color: #e5e7eb;
 }
 
+/* AI PERFORMANCE */  
+.ai-metrics {
+    grid-column: span 2;
+    min-height: 120px;
+    background:
+        linear-gradient(
+            135deg,
+            #111827,
+            #1e293b
+        );
+
+    border: 1px solid rgba(34,197,94,0.2);
+}
+
+.metric-line {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #cbd5e1;
+}
+
+.metric-line span {
+    color: #22c55e;
+    font-weight: bold;
+}
+    
 /* ===== TABLE BASE ===== */
 table {
     width: 100%;
@@ -722,6 +749,31 @@ td button:last-child {
                 <h3 id="uptime">0s</h3>
             </div>
 
+            <div class="mini-stat ai-metrics">
+
+    <p>🧠 AI PERFORMANCE</p>
+
+    <div class="metric-line">
+        Accuracy:
+        <span id="accuracy">96%</span>
+    </div>
+
+    <div class="metric-line">
+        Precision:
+        <span id="precision">94%</span>
+    </div>
+
+    <div class="metric-line">
+        Recall:
+        <span id="recall">91%</span>
+    </div>
+
+    <div class="metric-line">
+        FPR:
+        <span id="fpr">2%</span>
+    </div>
+
+</div>
         </div>
 
     </div>
@@ -798,6 +850,7 @@ td button:last-child {
     
 <!-- Incidents -->
 <div id="incidents" class="page hidden">
+
     <h2>🚨 Incident Analysis</h2>
 
     <!-- ===== TOP SECTION ===== -->
@@ -811,9 +864,11 @@ td button:last-child {
 
         <!-- CENTER -->
         <div class="card vector-card">
+
             <h4>⚡ Attack Vector</h4>
 
             <div class="vector-flow">
+
                 <div class="node">
                     <img src="/static/gateway.png">
                     <span>Gateway</span>
@@ -832,7 +887,9 @@ td button:last-child {
                     <img src="/static/db.png">
                     <span>Core DB</span>
                 </div>
+
             </div>
+
         </div>
 
         <!-- RIGHT -->
@@ -848,31 +905,39 @@ td button:last-child {
 
         <!-- LEFT: TIMELINE -->
         <div class="card timeline-card">
+
             <h3>🕒 Event Timeline</h3>
+
             <div id="timeline"></div>
+
         </div>
 
+        <!-- CENTER: THREAT ANALYSIS -->
         <div class="card threat-panel">
+
             <h3>⚠ Threat Analysis</h3>
+
             <div id="threatContent">
                 Select an incident to view details...
             </div>
+
         </div>
 
-    </div>
-        
         <!-- RIGHT SIDE -->
         <div class="right-side">
 
             <!-- ACTION CARD -->
             <div class="card action-card">
+
                 <h3>⚙️ Actions</h3>
 
-                <button class="btn stop" onclick="handleBlockClick()">
+                <button class="btn stop"
+                        onclick="handleBlockClick()">
                     🚫 Block IP
                 </button>
 
-                <button class="btn" onclick="retrainModel()">
+                <button class="btn"
+                        onclick="retrainModel()">
                     🔄 Retrain Model
                 </button>
 
@@ -880,14 +945,25 @@ td button:last-child {
                     onclick="quarantineIP(document.getElementById('incidentIP').innerText)">
                     🛡️ Quarantine
                 </button>
+
             </div>
 
-            <!-- 🔥 BLOCKED PANEL -->
-            <div id="blockedPanel" class="card hidden">
+            <!-- BLOCKED PANEL -->
+            <div id="blockedPanel"
+                 class="card hidden">
 
                 <div class="panel-header">
-                    <button onclick="closeBlocked()" class="btn">← Back</button>
-                    <button onclick="loadBlocked()" class="btn">🔄 Refresh</button>
+
+                    <button onclick="closeBlockedInline()"
+                            class="btn">
+                        ← Back
+                    </button>
+
+                    <button onclick="loadBlockedInline()"
+                            class="btn">
+                        🔄 Refresh
+                    </button>
+
                 </div>
 
                 <h3>🚫 Blocked IP List</h3>
@@ -899,6 +975,7 @@ td button:last-child {
         </div>
 
     </div>
+
 </div>
 
 <!-- ========================= -->
@@ -1573,6 +1650,36 @@ async function quarantineIP(ip) {
     alert("🛡️ Quarantined: " + ip);
 }
 
+async function loadMetrics() {
+
+    try {
+
+        let r = await fetch("/metrics");
+
+        let d = await r.json();
+
+        document.getElementById("accuracy")
+            .innerText =
+            (d.accuracy || 0).toFixed(2) + "%";
+
+        document.getElementById("precision")
+            .innerText =
+            (d.precision || 0).toFixed(2) + "%";
+
+        document.getElementById("recall")
+            .innerText =
+            (d.recall || 0).toFixed(2) + "%";
+
+        document.getElementById("fpr")
+            .innerText =
+            (d.false_positive_rate || 0).toFixed(2) + "%";
+
+    } catch (e) {
+
+        console.log("Metrics error:", e);
+    }
+}
+    
     
 // DATA
 let globalData = [];
@@ -1602,7 +1709,7 @@ function connectWebSocket() {
     globalData.unshift(newLog);
 
     // limit memory
-    if (globalData.length > 15) {
+    if (globalData.length > 100) {
         globalData.pop();
     }
 
@@ -1634,6 +1741,7 @@ function connectWebSocket() {
     // STATS UPDATE
     // =========================
     updateStats(globalData);
+      loadMetrics();
     if (
     document.getElementById("incidents")
         .classList.contains("hidden") === false
@@ -1719,7 +1827,7 @@ async function loadData(){
 
     if (!d) return;
 
-   globalData = d.slice(0, 15);
+   globalData = d.slice(0, 100);
 
     let html = "";
     let attack = 0;
@@ -2131,6 +2239,7 @@ window.onload = () => {
 
     // connect websocket
     connectWebSocket();
+    loadMetrics();
 };
     
 </script>
