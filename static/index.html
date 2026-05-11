@@ -1118,7 +1118,20 @@ async function loadGraph() {
     
 function updateStats(data) {
 
-    if (!data || data.length === 0) return;
+    if (!data || data.length === 0) {
+
+    // fallback from live traffic
+    data = globalData.filter(
+        x =>
+            x.status === "ATTACK" ||
+            x.status === "SUSPICIOUS"
+    );
+
+    // still nothing → use latest traffic
+    if (data.length === 0 && globalData.length > 0) {
+        data = [globalData[0]];
+    }
+}
 
     let total = data.length;
 
@@ -1621,7 +1634,12 @@ function connectWebSocket() {
     // STATS UPDATE
     // =========================
     updateStats(globalData);
-
+    if (
+    document.getElementById("incidents")
+        .classList.contains("hidden") === false
+    ) {
+    loadIncidentsPage();
+    }
     // =========================
     // GRAPH UPDATE
     // =========================
