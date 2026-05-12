@@ -1210,7 +1210,9 @@ async function loadGraph() {
 
                 maintainAspectRatio: false,
 
-                animation: false,
+                animation: {
+                    duration: 800
+                },
 
                 plugins: {
 
@@ -2312,12 +2314,19 @@ function startMainLoop() {
     }, 2000);
 }
 
+setInterval(() => {
+
+    if (!chart) return;
+
+    loadGraph();
+
+}, 1000);
+
+    
 window.onload = () => {
     startUptimeLoop();
      loadData();
     loadAlerts();
-
-    // connect websocket
     connectWebSocket();
     loadMetrics();
 };
