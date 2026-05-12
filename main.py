@@ -559,7 +559,7 @@ async def get_metrics():
 
     precision = 100.0
 
-    recall = 99.99
+    recall = 99.992
 
     f1_score = 99.996
 
