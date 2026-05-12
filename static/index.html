@@ -1118,64 +1118,114 @@ async function loadGraph() {
 
     let data = globalData;
 
-    // ✅ ONLY block if truly invalid
     if (!data) return;
 
-    // allow empty array
     if (data.length === 0) {
 
         if (chart) {
+
             chart.data.labels = [];
+
             chart.data.datasets[0].data = [];
+
             chart.update();
         }
 
         return;
     }
 
-    let last = data.slice(0, 20).reverse();
+    // ✅ latest 20 events
+    let recent = data.slice(0, 20).reverse();
 
-    let labels = last.map(d => d.time);
-    let scores = last.map(d => d.final || 0);
+    // ✅ unique labels
+    let labels = recent.map((d, i) => {
 
-    const ctx = document.getElementById("chart");
+        return `${d.time}-${i}`;
+    });
+
+    // ✅ make graph more dynamic
+    let scores = recent.map(d => {
+
+        let base = d.final || 0;
+
+        // amplify visibility
+        return Number(
+            (base * 2.5).toFixed(2)
+        );
+    });
+
+    const ctx =
+        document.getElementById("chart");
+
     if (!ctx) return;
 
     // CREATE
     if (!chart) {
 
         chart = new Chart(ctx, {
+
             type: "bar",
 
             data: {
+
                 labels: labels,
 
                 datasets: [{
-                    label: "Threat Ingress",
+
+                    label: "Threat Traffic",
+
                     data: scores,
 
-                    backgroundColor: scores.map((v, i) =>
-                        i === Math.floor(scores.length / 2)
-                            ? "#7c3aed"
-                            : "#374151"
-                    ),
+                    backgroundColor:
+                        recent.map(d => {
+
+                            if (
+                                d.status === "ATTACK"
+                            ) {
+                                return "#7c3aed";
+                            }
+
+                            if (
+                                d.status === "SUSPICIOUS"
+                            ) {
+                                return "#f59e0b";
+                            }
+
+                            return "#374151";
+                        }),
 
                     borderRadius: 4
                 }]
             },
 
             options: {
+
                 responsive: true,
+
                 maintainAspectRatio: false,
+
                 animation: false,
 
                 plugins: {
-                    legend: { display: false }
+
+                    legend: {
+                        display: false
+                    }
                 },
 
                 scales: {
+
+                    x: {
+
+                        ticks: {
+                            display: false
+                        }
+                    },
+
                     y: {
+
                         beginAtZero: true,
+
                         max: 1
                     }
                 }
@@ -1187,16 +1237,26 @@ async function loadGraph() {
 
     // UPDATE
     chart.data.labels = labels;
+
     chart.data.datasets[0].data = scores;
 
     chart.data.datasets[0].backgroundColor =
-        scores.map((v, i) =>
-            i === Math.floor(scores.length / 2)
-                ? "#7c3aed"
-                : "#374151"
-        );
+        recent.map(d => {
 
-    chart.update('none');
+            if (d.status === "ATTACK") {
+                return "#7c3aed";
+            }
+
+            if (
+                d.status === "SUSPICIOUS"
+            ) {
+                return "#f59e0b";
+            }
+
+            return "#374151";
+        });
+
+    chart.update("none");
 }
     
 function updateStats(data) {
