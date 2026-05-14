@@ -111,7 +111,6 @@ SIDEBAR
 .sidebar.closed .account-text,
 .sidebar.closed #accountArrow,
 .sidebar.closed .account-menu {
-
     display: none;
 }
 
@@ -763,32 +762,29 @@ td button:last-child {
 <div class="sidebar" id="sidebar">
 
     <!-- TOGGLE -->
-    <div onclick="toggleSidebar()"
-         style="
-            cursor:pointer;
-            margin-bottom:20px;
-            font-size:18px;
-         ">
+    <div class="toggle-btn"
+         onclick="toggleSidebar()">
         ☰
     </div>
 
     <!-- LOGO -->
     <div class="logo">
 
-        <span style="
-            font-size:20px;
-            font-weight:bold;
-            color:white;
-        ">
-            🦈 SHARRK_OS
+        <span class="logo-icon">🦈</span>
+
+        <span class="logo-text">
+            SHARRK_OS
         </span>
 
     </div>
 
     <!-- MENU -->
-    <a onclick="showPage('dashboard')">
 
-        <span>🖥️</span>
+    <!-- DASHBOARD -->
+    <a class="menu-item"
+       onclick="showPage('dashboard')">
+
+        <span class="icon">🖥️</span>
 
         <span class="text">
             Dashboard
@@ -796,9 +792,11 @@ td button:last-child {
 
     </a>
 
-    <a onclick="showPage('traffic')">
+    <!-- TRAFFIC -->
+    <a class="menu-item"
+       onclick="showPage('traffic')">
 
-        <span>📡</span>
+        <span class="icon">📡</span>
 
         <span class="text">
             Traffic Analysis
@@ -806,9 +804,11 @@ td button:last-child {
 
     </a>
 
-    <a onclick="showPage('incidents')">
+    <!-- INCIDENT -->
+    <a class="menu-item"
+       onclick="showPage('incidents')">
 
-        <span>🚨</span>
+        <span class="icon">🚨</span>
 
         <span class="text">
             Incident Analysis
@@ -819,9 +819,7 @@ td button:last-child {
     <!-- PUSH TO BOTTOM -->
     <div style="flex:1;"></div>
 
-    <!-- ========================= -->
-    <!-- ACCOUNT -->
-    <!-- ========================= -->
+    <!-- ACCOUNT PANEL -->
     <div class="account-panel">
 
         <!-- HEADER -->
@@ -870,7 +868,6 @@ td button:last-child {
     </div>
 
 </div>
-
 <!-- ========================= -->
 <!-- MAIN -->
 <!-- ========================= -->
