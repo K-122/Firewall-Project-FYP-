@@ -17,9 +17,6 @@ import tensorflow as tf
 import joblib
 import asyncio
 
-class LoginRequest(BaseModel):
-username: str
-password: str
 
 active_connections = []
 app = FastAPI()
