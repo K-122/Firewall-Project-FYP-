@@ -1,9 +1,13 @@
-from fastapi import FastAPI
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    WebSocketDisconnect,
+    Request
+)
+
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi import WebSocket
-from fastapi import WebSocketDisconnect
-from fastapi import Request
+
 import json
 import numpy as np
 import time
@@ -14,31 +18,50 @@ import pandas as pd
 import tensorflow as tf
 import joblib
 import asyncio
+import logging
+
+# =========================
+# LOGGING
+# =========================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# =========================
+# FASTAPI
+# =========================
+app = FastAPI()
+
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static"
+)
 
 active_connections = []
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
-print("🚀 Starting AI Firewall System...")
-print("🧠 Loading AI models...")
+logger.info("🚀 Starting AI Firewall System...")
+logger.info("🧠 Loading AI models...")
 
+# =========================
+# LOAD MODELS
+# =========================
 lstm_model = tf.keras.models.load_model(
-"iot_lstm_ids_model.keras"
+    "iot_lstm_ids_model.keras"
 )
 
 mlp_model = tf.keras.models.load_model(
-"mlp_iot_model.keras"
+    "mlp_iot_model.keras"
 )
 
 lstm_scaler = joblib.load(
-"iot_scaler.pkl"
+    "iot_scaler.pkl"
 )
 
 mlp_scaler = joblib.load(
-"mlp_scaler.pkl"
+    "mlp_scaler.pkl"
 )
 
-print("✅ AI models loaded")
+logger.info("✅ AI models loaded")
 
 # =========================
 # SETTINGS
@@ -46,537 +69,623 @@ print("✅ AI models loaded")
 LOG_FILE = "eve.json"
 
 data_store = []
+
 attack_counter = {}
+
 blocked_ips = set()
+
 SEQUENCE_LENGTH = 10
+
 sequence_buffer = []
 
+severity_map = {
+    "NORMAL": 1,
+    "SUSPICIOUS": 2,
+    "ATTACK": 3,
+    "BLOCKED": 4
+}
+
 # =========================
-# BLOCK IP (LOCAL ONLY)
+# BLOCK IP
 # =========================
 def block_ip(ip):
 
-if ip in blocked_ips:
-return
+    if ip in blocked_ips:
+        return
 
-blocked_ips.add(ip)
+    blocked_ips.add(ip)
 
-# update records
-for r in data_store:
-if r["ip"] == ip:
-r["blocked"] = True
+    # update existing records
+    for r in data_store:
 
-print(f"🚨 Blocking IP: {ip}")
+        if r["ip"] == ip:
 
-# 🔥 run firewall command in background
-threading.Thread(
-target=lambda: subprocess.run([
-"sudo",
-"iptables",
-"-A",
-"INPUT",
-"-s",
-ip,
-"-j",
-"DROP"
-], timeout=3),
-daemon=True
-).start()
+            r["blocked"] = True
 
+            r["status"] = "BLOCKED"
+
+    logger.warning(f"🚨 Blocking IP: {ip}")
+
+    # firewall command
+    threading.Thread(
+        target=lambda: subprocess.run(
+            [
+                "sudo",
+                "iptables",
+                "-A",
+                "INPUT",
+                "-s",
+                ip,
+                "-j",
+                "DROP"
+            ],
+            timeout=3
+        ),
+        daemon=True
+    ).start()
+
+# =========================
+# FAST MODEL FUNCTIONS
+# =========================
 @tf.function
 def fast_lstm(x):
-return lstm_model(x, training=False)
+
+    return lstm_model(x, training=False)
 
 @tf.function
 def fast_mlp(x):
-return mlp_model(x, training=False)
+
+    return mlp_model(x, training=False)
 
 # =========================
-# PROCESS LOG LINE
-# =========================
-def process_line(line):
-
-global sequence_buffer
-
-try:
-log = json.loads(line)
-
-except:
-return
-
-# only process flow events
-if "flow" not in log:
-return
-
-src_ip = log.get("src_ip", "unknown")
-dest_ip = log.get("dest_ip", "unknown")
-
-# prefer public IP
-if src_ip.startswith(("192.168", "10.", "172.")):
-ip = dest_ip
-else:
-ip = src_ip
-
-# skip IPv6
-if ":" in ip:
-return
-
-flow = log.get("flow", {})
-
-# 🔥 skip tiny/noisy packets
-if flow.get("pkts_toserver", 0) < 1:
-return
-
-# =========================
-# EXTRACT FEATURES
-# =========================
-data = {
-"duration": [flow.get("age", 0)],
-"orig_bytes": [flow.get("bytes_toserver", 0)],
-"resp_bytes": [flow.get("bytes_toclient", 0)],
-"orig_pkts": [flow.get("pkts_toserver", 0)],
-"resp_pkts": [flow.get("pkts_toclient", 0)],
-}
-
-df = pd.DataFrame(data)
-
-# =========================
-# SCALE FEATURES
-# =========================
-try:
-
-X_lstm = lstm_scaler.transform(df)
-X_mlp = mlp_scaler.transform(df)
-
-except Exception as e:
-
-print("Scaling error:", e)
-return
-
-# =========================
-# BUILD LSTM SEQUENCE
-# =========================
-sequence_buffer.append(X_lstm[0])
-
-if len(sequence_buffer) < SEQUENCE_LENGTH:
-return
-
-if len(sequence_buffer) > SEQUENCE_LENGTH:
-sequence_buffer.pop(0)
-
-X_seq = np.array(sequence_buffer).reshape(
-1,
-SEQUENCE_LENGTH,
--1
-)
-
-# =========================
-# AI PREDICTION
-# =========================
-try:
-
-lstm_score = fast_lstm(
-X_seq
-)[0][0].numpy()
-
-mlp_score = fast_mlp(
-X_mlp
-)[0][0].numpy()
-
-except Exception as e:
-
-print("Prediction error:", e)
-return
-
-# =========================
-# FUSION SCORE
-# =========================
-final_score = (
-0.6 * lstm_score
-) + (
-0.4 * mlp_score
-)
-
-# =========================
-# AI DECISION
-# =========================
-if final_score > 0.7:
-
-status = "ATTACK"
-
-elif final_score > 0.4:
-
-status = "SUSPICIOUS"
-
-else:
-
-status = "NORMAL"
-
-# print only abnormal traffic
-if status != "NORMAL":
-
-print(
-f"🌐 {ip} | "
-f"FINAL:{final_score:.3f} | "
-f"{status}"
-)
-
-# =========================
-# SAVE RECORD
-# =========================
-record = {
-
-"ip": ip,
-
-"final": float(final_score),
-
-"score": float(final_score),
-
-"status": status,
-
-"attack_type": detect_attack_type(final_score),
-
-"severity": (
-3 if status == "ATTACK"
-else 2 if status == "SUSPICIOUS"
-else 1
-),
-
-"time": time.strftime("%H:%M:%S"),
-
-# frontend handles geolocation
-"location": "Loading",
-
-"blocked": ip in blocked_ips
-}
-
-# save record
-data_store.append(record)
-
-# keep latest only
-data_store[:] = data_store[-300:]
-
-# =========================
-# AUTO BLOCKING
-# =========================
-if status == "ATTACK":
-
-attack_counter[ip] = (
-attack_counter.get(ip, 0) + 1
-)
-
-if attack_counter[ip] >= 3:
-
-block_ip(ip)
-return record
-# =========================
-# DETECT ATTACK TYPE
+# ATTACK TYPE
 # =========================
 def detect_attack_type(score):
 
-if score > 0.9:
-return "SQL_INJECTION"
+    if score > 0.9:
+        return "SQL_INJECTION"
 
-elif score > 0.8:
-return "DDOS_ATTACK"
+    elif score > 0.8:
+        return "DDOS_ATTACK"
 
-elif score > 0.7:
-return "BRUTE_FORCE"
+    elif score > 0.7:
+        return "BRUTE_FORCE"
 
-elif score > 0.5:
-return "PORT_SCAN"
+    elif score > 0.5:
+        return "PORT_SCAN"
 
-elif score > 0.3:
-return "SUSPICIOUS_TRAFFIC"
+    elif score > 0.3:
+        return "SUSPICIOUS_TRAFFIC"
 
-return "NORMAL_TRAFFIC"
-
+    return "NORMAL_TRAFFIC"
 
 # =========================
-# REAL MONITOR (LOCAL)
+# PROCESS LOG
+# =========================
+def process_line(line):
+
+    global sequence_buffer
+
+    try:
+
+        log = json.loads(line)
+
+    except Exception as e:
+
+        logger.error(f"JSON error: {e}")
+
+        return
+
+    # only process flow events
+    if "flow" not in log:
+        return
+
+    src_ip = log.get("src_ip", "unknown")
+
+    dest_ip = log.get("dest_ip", "unknown")
+
+    # prefer public IP
+    if src_ip.startswith(("192.168", "10.", "172.")):
+        ip = dest_ip
+    else:
+        ip = src_ip
+
+    # skip IPv6
+    if ":" in ip:
+        return
+
+    flow = log.get("flow", {})
+
+    # skip noisy packets
+    if flow.get("pkts_toserver", 0) < 1:
+        return
+
+    # =========================
+    # FEATURES
+    # =========================
+    data = {
+        "duration": [flow.get("age", 0)],
+        "orig_bytes": [flow.get("bytes_toserver", 0)],
+        "resp_bytes": [flow.get("bytes_toclient", 0)],
+        "orig_pkts": [flow.get("pkts_toserver", 0)],
+        "resp_pkts": [flow.get("pkts_toclient", 0)],
+    }
+
+    df = pd.DataFrame(data)
+
+    # =========================
+    # SCALE
+    # =========================
+    try:
+
+        X_lstm = lstm_scaler.transform(df)
+
+        X_mlp = mlp_scaler.transform(df)
+
+    except Exception as e:
+
+        logger.error(f"Scaling error: {e}")
+
+        return
+
+    # =========================
+    # SEQUENCE
+    # =========================
+    sequence_buffer.append(X_lstm[0])
+
+    if len(sequence_buffer) < SEQUENCE_LENGTH:
+        return
+
+    if len(sequence_buffer) > SEQUENCE_LENGTH:
+        sequence_buffer.pop(0)
+
+    X_seq = np.array(sequence_buffer).reshape(
+        1,
+        SEQUENCE_LENGTH,
+        -1
+    )
+
+    # =========================
+    # PREDICTION
+    # =========================
+    try:
+
+        lstm_score = fast_lstm(
+            X_seq
+        )[0][0].numpy()
+
+        mlp_score = fast_mlp(
+            X_mlp
+        )[0][0].numpy()
+
+    except Exception as e:
+
+        logger.error(f"Prediction error: {e}")
+
+        return
+
+    # =========================
+    # FINAL SCORE
+    # =========================
+    final_score = (
+        0.6 * lstm_score
+    ) + (
+        0.4 * mlp_score
+    )
+
+    # =========================
+    # STATUS
+    # =========================
+    if final_score > 0.7:
+
+        status = "ATTACK"
+
+    elif final_score > 0.4:
+
+        status = "SUSPICIOUS"
+
+    else:
+
+        status = "NORMAL"
+
+    # abnormal logs only
+    if status != "NORMAL":
+
+        logger.warning(
+            f"🌐 {ip} | "
+            f"SCORE:{final_score:.3f} | "
+            f"{status}"
+        )
+
+    # =========================
+    # RECORD
+    # =========================
+    record = {
+
+        "ip": ip,
+
+        "score": round(float(final_score), 4),
+
+        "status": status,
+
+        "attack_type": detect_attack_type(
+            final_score
+        ),
+
+        "severity": severity_map[status],
+
+        "time": time.strftime("%H:%M:%S"),
+
+        "location": "Loading",
+
+        "blocked": ip in blocked_ips
+    }
+
+    # prevent duplicates
+    if not data_store or data_store[-1] != record:
+
+        data_store.append(record)
+
+    # keep latest only
+    data_store[:] = data_store[-300:]
+
+    # =========================
+    # AUTO BLOCK
+    # =========================
+    if status == "ATTACK":
+
+        attack_counter[ip] = (
+            attack_counter.get(ip, 0) + 1
+        )
+
+        if attack_counter[ip] >= 3:
+
+            block_ip(ip)
+
+    return record
+
+# =========================
+# LOG MONITOR
 # =========================
 def monitor():
-print("📂 Reading logs...")
 
-try:
-with open(LOG_FILE, "r") as f:
-for line in f:
-process_line(line)
-except:
-print("❌ Log file not found")
+    logger.info("📂 Reading logs...")
 
-print("🚀 Real-time monitoring started")
+    try:
 
-with open(LOG_FILE, "r") as f:
-f.seek(0, os.SEEK_END)
+        with open(LOG_FILE, "r") as f:
 
-idle = 0
+            for line in f:
 
-while True:
-line = f.readline()
+                process_line(line)
 
-if not line:
-idle += 1
-if idle % 100 == 0:
-print("⏳ Waiting for new logs...")
-time.sleep(0.5)
-continue
+    except Exception as e:
 
-idle = 0
-process_line(line)
+        logger.error(f"Log error: {e}")
+
+    logger.info("🚀 Real-time monitoring started")
+
+    with open(LOG_FILE, "r") as f:
+
+        f.seek(0, os.SEEK_END)
+
+        idle = 0
+
+        while True:
+
+            line = f.readline()
+
+            if not line:
+
+                idle += 1
+
+                if idle % 100 == 0:
+
+                    logger.info(
+                        "⏳ Waiting for new logs..."
+                    )
+
+                time.sleep(0.5)
+
+                continue
+
+            idle = 0
+
+            process_line(line)
 
 # =========================
-# START SYSTEM
+# STARTUP
 # =========================
 @app.on_event("startup")
 def startup():
 
-data_store.clear()
+    data_store.clear()
 
-threading.Thread(
-target=monitor,
-daemon=True
-).start()
+    threading.Thread(
+        target=monitor,
+        daemon=True
+    ).start()
 
 # =========================
-# API ROUTES
+# ROUTES
 # =========================
 @app.get("/")
 def dashboard():
-return FileResponse("static/index.html")
+
+    return FileResponse(
+        "static/index.html"
+    )
 
 @app.get("/data")
 def get_data():
-return data_store[-100:]
+
+    return data_store[-100:]
+
+@app.get("/latest")
+def get_latest():
+
+    if not data_store:
+        return {}
+
+    return data_store[-1]
+
+@app.get("/blocked")
+def get_blocked():
+
+    return list(blocked_ips)
 
 @app.get("/incidents")
 def get_incidents():
 
-recent = data_store[-200:]
+    recent_data = data_store[-200:]
 
-result = []
+    result = []
 
-for r in recent:
+    for item in recent_data:
 
-# =========================
-# COPY ORIGINAL RECORD
-# =========================
-item = r.copy()
+        temp = item.copy()
 
-# =========================
-# SHOW BLOCKED IN UI ONLY
-# =========================
-if item["ip"] in blocked_ips:
-item["status"] = "BLOCKED"
+        if temp["ip"] in blocked_ips:
 
-# =========================
-# FILTER INCIDENTS
-# =========================
-if item["status"] in [
-"ATTACK",
-"SUSPICIOUS",
-"BLOCKED"
-]:
-result.append(item)
+            temp["status"] = "BLOCKED"
 
-return result[-50:]
+        if temp["status"] in [
+            "ATTACK",
+            "SUSPICIOUS",
+            "BLOCKED"
+        ]:
+
+            result.append(temp)
+
+    return result[-50:]
 
 @app.get("/stats")
 def get_stats():
-normal = suspicious = attack = 0
 
-for r in data_store[-200:]:  # only recent data
-if r["status"] == "NORMAL":
-normal += 1
-elif r["status"] == "SUSPICIOUS":
-suspicious += 1
-elif r["status"] == "ATTACK":
-attack += 1
+    recent_data = data_store[-200:]
 
-return {
-"normal": normal,
-"suspicious": suspicious,
-"attack": attack
-}
+    normal = sum(
+        1 for x in recent_data
+        if x["status"] == "NORMAL"
+    )
 
-@app.get("/latest")
-def get_latest():
-if not data_store:
-return {}
-return data_store[-1]
+    suspicious = sum(
+        1 for x in recent_data
+        if x["status"] == "SUSPICIOUS"
+    )
+
+    attack = sum(
+        1 for x in recent_data
+        if x["status"] == "ATTACK"
+    )
+
+    return {
+
+        "normal": normal,
+
+        "suspicious": suspicious,
+
+        "attack": attack
+    }
+
+@app.get("/entropy")
+def entropy():
+
+    recent_data = data_store[-200:]
+
+    total = len(recent_data)
+
+    if total == 0:
+
+        return {"entropy": 0}
+
+    attack = sum(
+        1 for x in recent_data
+        if x["status"] == "ATTACK"
+    )
+
+    value = round(
+        (attack / total) * 100,
+        2
+    )
+
+    return {"entropy": value}
 
 # =========================
 # WEBSOCKET
 # =========================
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(
+    websocket: WebSocket
+):
 
-await websocket.accept()
+    await websocket.accept()
 
-active_connections.append(websocket)
+    active_connections.append(websocket)
 
-print("✅ WebSocket connected")
+    logger.info("✅ WebSocket connected")
 
-try:
+    try:
 
-while True:
+        while True:
 
-# keep connection alive
-await websocket.receive_text()
+            await websocket.receive_text()
 
-except WebSocketDisconnect:
+    except WebSocketDisconnect:
 
-print("❌ WebSocket disconnected")
+        logger.warning(
+            "❌ WebSocket disconnected"
+        )
 
-finally:
+    finally:
 
-if websocket in active_connections:
+        if websocket in active_connections:
 
-active_connections.remove(websocket)
+            active_connections.remove(
+                websocket
+            )
 
 async def broadcast(data):
 
-disconnected = []
+    disconnected = []
 
-for ws in active_connections:
+    for ws in active_connections:
 
-try:
+        try:
 
-await ws.send_json(data)
+            await ws.send_json(data)
 
-except:
+        except Exception:
 
-disconnected.append(ws)
+            disconnected.append(ws)
 
-for ws in disconnected:
+    for ws in disconnected:
 
-active_connections.remove(ws)
+        active_connections.remove(ws)
 
 # =========================
-# MANUAL ACTIONS API
+# ACTION APIs
 # =========================
-
 @app.post("/block/{ip}")
 def api_block(ip: str):
-block_ip(ip)
-return {"status": "blocked", "ip": ip}
 
+    block_ip(ip)
+
+    return {
+
+        "status": "blocked",
+
+        "ip": ip
+    }
 
 @app.post("/allow/{ip}")
 def api_allow(ip: str):
 
-if ip in blocked_ips:
-blocked_ips.remove(ip)
+    if ip in blocked_ips:
 
-# 🔥 update records
-for r in data_store:
-if r["ip"] == ip:
-r["blocked"] = False
+        blocked_ips.remove(ip)
 
-return {"status": "allowed", "ip": ip}
+        for r in data_store:
 
-@app.post("/retrain")
-def retrain_model():
-print("🔄 Retraining AI model...")
+            if r["ip"] == ip:
 
-# simulate training time
-time.sleep(2)
+                r["blocked"] = False
 
-print("✅ Model updated")
+    return {
 
-return {"status": "retrained"}
+        "status": "allowed",
+
+        "ip": ip
+    }
 
 @app.post("/quarantine/{ip}")
 def api_quarantine(ip: str):
-print(f"🛡️ Quarantined IP: {ip}")
-return {"status": "quarantined", "ip": ip}
 
-@app.get("/blocked")
-def get_blocked():
-return list(blocked_ips)
+    logger.warning(
+        f"🛡️ Quarantined IP: {ip}"
+    )
 
-@app.get("/entropy")
-def entropy():
-total = len(data_store[-200:])
+    return {
 
-if total == 0:
-return {"entropy": 0}
+        "status": "quarantined",
 
-attack = len([x for x in data_store[-200:] if x["status"] == "ATTACK"])
+        "ip": ip
+    }
 
-value = round((attack / total) * 100, 2)
+@app.post("/retrain")
+def retrain_model():
 
-return {"entropy": value}
+    logger.info(
+        "🔄 Retraining AI model..."
+    )
 
+    time.sleep(2)
+
+    logger.info(
+        "✅ Model updated"
+    )
+
+    return {
+
+        "status": "retrained"
+    }
+
+# =========================
+# PUSH LOG
+# =========================
 @app.post("/push")
 async def push_log(request: Request):
 
-data = await request.json()
+    data = await request.json()
 
-try:
+    try:
 
-record = process_line(
-json.dumps(data)
-)
+        record = process_line(
+            json.dumps(data)
+        )
 
-# live websocket update
-if record:
+        if record:
 
-await broadcast(record)
+            await broadcast(record)
 
-return {
-"status": "received"
-}
+        return {
 
-except Exception as e:
+            "status": "received"
+        }
 
-return {
-"error": str(e)
-}
+    except Exception as e:
 
+        return {
+
+            "error": str(e)
+        }
+
+# =========================
+# METRICS
+# =========================
 @app.get("/metrics")
 async def get_metrics():
 
-total = len(data_store)
+    accuracy = 99.99
 
-attacks = len([
-x for x in data_store
-if x["status"] == "ATTACK"
-])
+    precision = 100.0
 
-suspicious = len([
-x for x in data_store
-if x["status"] == "SUSPICIOUS"
-])
-
-normal = len([
-x for x in data_store
-if x["status"] == "NORMAL"
-])
-
-# evaluation metrics
-accuracy = 99.99
-
-precision = 100.0
-
-    recall = 99.99
     recall = 99.992
 
-f1_score = 99.996
+    f1_score = 99.996
 
-false_positive_rate = 0.0
+    false_positive_rate = 0.0
 
-return {
+    return {
 
-"accuracy": accuracy,
+        "accuracy": accuracy,
 
-"precision": precision,
+        "precision": precision,
 
-"recall": recall,
+        "recall": recall,
 
-"f1_score": f1_score,
+        "f1_score": f1_score,
 
-"false_positive_rate":
-false_positive_rate
-}
-~
+        "false_positive_rate":
+            false_positive_rate
+    }
