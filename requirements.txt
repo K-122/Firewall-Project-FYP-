@@ -1,9 +1,27 @@
+# Web Framework
 fastapi
-uvicorn
+uvicorn[standard]
+python-multipart
+aiofiles
+
+# ML/Data Processing
+tensorflow-cpu
 numpy
 pandas
-tensorflow-cpu
-joblib
 scikit-learn
+joblib
 requests
-python-multipart
+
+# Security
+passlib
+bcrypt
+python-jose[cryptography]
+cryptography
+
+# Configuration
+python-dotenv
+
+# Testing
+pytest
+pytest-asyncio
+httpx
