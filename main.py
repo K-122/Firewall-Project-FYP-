@@ -4,8 +4,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
 from fastapi import Request
-from fastapi import HTTPException
-from pydantic import BaseModel
 import json
 import numpy as np
 import time
@@ -16,7 +14,6 @@ import pandas as pd
 import tensorflow as tf
 import joblib
 import asyncio
-
 
 active_connections = []
 app = FastAPI()
@@ -93,25 +90,6 @@ return lstm_model(x, training=False)
 @tf.function
 def fast_mlp(x):
 return mlp_model(x, training=False)
-
-blocked_ips = set()
-# =========================
-# USERS
-# =========================
-USERS = {
-
-"superadmin": {
-"password": "admin123",
-"role": "superadmin"
-},
-
-"finance": {
-"password": "finance123",
-"role": "FinanceStaff"
-}
-}
-
-active_sessions = {}
 
 # =========================
 # PROCESS LOG LINE
@@ -407,7 +385,7 @@ return result[-50:]
 def get_stats():
 normal = suspicious = attack = 0
 
-for r in data_store[-200:]: # only recent data
+for r in data_store[-200:]:  # only recent data
 if r["status"] == "NORMAL":
 normal += 1
 elif r["status"] == "SUSPICIOUS":
@@ -426,42 +404,6 @@ def get_latest():
 if not data_store:
 return {}
 return data_store[-1]
-
-
-# =========================
-# AUTHENTICATION
-# =========================
-
-@app.post("/login")
-def login(data: LoginRequest):
-
-user = USERS.get(data.username)
-
-if not user:
-raise HTTPException(
-status_code=401,
-detail="Invalid username"
-)
-
-if user["password"] != data.password:
-raise HTTPException(
-status_code=401,
-detail="Invalid password"
-)
-
-return {
-"status": "success",
-"username": data.username,
-"role": user["role"]
-}
-
-
-@app.post("/logout")
-def logout():
-
-return {
-"status": "logged_out"
-}
 
 # =========================
 # WEBSOCKET
@@ -617,7 +559,8 @@ accuracy = 99.99
 
 precision = 100.0
 
-recall = 99.992
+    recall = 99.99
+    recall = 99.992
 
 f1_score = 99.996
 
@@ -636,3 +579,4 @@ return {
 "false_positive_rate":
 false_positive_rate
 }
+~
