@@ -7,7 +7,10 @@ from fastapi import (
 
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.security import HTTPBearer, HTTPAuthCredential
+from fastapi.security import (
+    HTTPBearer,
+    HTTPAuthorizationCredentials
+)
 from fastapi import Depends, HTTPException, status
 from datetime import datetime, timedelta
 from jose.exceptions import (
@@ -126,7 +129,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     
     return encoded_jwt
 
-def verify_token(credentials: HTTPAuthCredential = Depends(security)):
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify JWT token"""
     token = credentials.credentials
     
