@@ -21,6 +21,13 @@ cryptography
 # Configuration
 python-dotenv
 
+# Authentication
+pydantic
+pydantic-settings
+
+# Configuration
+python-dotenv
+
 # Testing
 pytest
 pytest-asyncio
