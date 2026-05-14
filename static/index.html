@@ -53,9 +53,12 @@ body::after {
         radial-gradient(circle at 80% 30%, rgba(139,92,246,0.12), transparent 60%);
 }
 
-/* SIDEBAR */
+/* =========================
+SIDEBAR
+========================= */
+
 .sidebar {
-    width: 200px;
+    width: 220px;
     height: 100vh;
     position: fixed;
     left: 0;
@@ -65,94 +68,153 @@ body::after {
     padding: 20px;
     box-sizing: border-box;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid #1e293b;
 }
 
-/* logo */
+/* COLLAPSED */
+.sidebar.closed {
+    width: 70px;
+}
+
+/* LOGO */
 .logo {
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-bottom: 25px;
 }
 
-/* sidebar links */
+/* MENU */
 .sidebar a {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
     color: #94a3b8;
+    border-radius: 10px;
     cursor: pointer;
-    border-radius: 8px;
+    transition: 0.2s;
 }
 
 .sidebar a:hover {
     background: #1e293b;
+
+    color: white;
 }
 
-/* COLLAPSED SIDEBAR */
-.sidebar.closed {
-    width: 60px;
-}
-
-/* hide text + icons */
-.sidebar.closed .icon,
+/* COLLAPSED */
 .sidebar.closed .text,
-.sidebar.closed .logo-text {
+.sidebar.closed .account-text,
+.sidebar.closed #accountArrow,
+.sidebar.closed .account-menu {
+
     display: none;
 }
 
-/* center remaining icons */
 .sidebar.closed a {
-    justify-content: center;
-}
 
-/* center logo */
-.sidebar.closed .logo {
     justify-content: center;
 }
 
 /* =========================
-ACCOUNT DROPDOWN
+ACCOUNT PANEL
 ========================= */
 
-.account-header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    cursor:pointer;
+.account-panel {
+    width: 100%;
+    padding-top: 12px;
+    border-top: 1px solid #1e293b;
 }
 
+/* ACCOUNT HEADER */
+.account-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    width: 100%;
+}
+
+/* ACCOUNT INFO */
+.account-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+}
+
+/* AVATAR */
+.account-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #3b82f6;
+    display: block;
+    flex-shrink: 0;
+}
+
+/* TEXT WRAPPER */
+.account-text {
+    display: flex;
+    align-items: center;
+    height: 38px;
+}
+
+/* USERNAME */
+#accountName {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e2e8f0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+/* ARROW */
+#accountArrow {
+    color: #94a3b8;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    height: 38px;
+}
+
+/* =========================
+DROPDOWN
+========================= */
+
 .account-menu {
-    margin-top:10px;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .account-menu button {
-    background:#1e293b;
-    color:white;
-    border:none;
-    padding:10px;
-    border-radius:8px;
-    cursor:pointer;
-    text-align:left;
-    transition:0.2s;
+    background: #1e293b;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: 0.2s;
+    font-size: 13px;
 }
 
 .account-menu button:hover {
-    background:#334155;
+    background: #334155;
 }
 
+/* HIDDEN */
 .hidden {
-    display:none;
+    display: none;
 }
-
-#accountArrow {
-    color:#94a3b8;
-    font-size:12px;
-}
-
 
 /* =========================
    MAIN CONTENT
@@ -695,60 +757,123 @@ td button:last-child {
 
 <body>
 
-<!-- ACCOUNT PANEL -->
-<div class="account-panel">
+<!-- ========================= -->
+<!-- SIDEBAR -->
+<!-- ========================= -->
+<div class="sidebar" id="sidebar">
 
-    <!-- CLICKABLE HEADER -->
-    <div class="account-header"
-         onclick="toggleAccountMenu()">
+    <!-- TOGGLE -->
+    <div onclick="toggleSidebar()"
+         style="
+            cursor:pointer;
+            margin-bottom:20px;
+            font-size:18px;
+         ">
+        ☰
+    </div>
 
-        <div class="account-info">
+    <!-- LOGO -->
+    <div class="logo">
 
-            <img src="/static/account.png"
-                 class="account-avatar">
-
-            <div class="account-text">
-
-                <div id="accountName">
-                    SuperAdmin
-                </div>
-
-                <div id="accountRole">
-                    superadmin
-                </div>
-
-            </div>
-
-        </div>
-
-        <span id="accountArrow">
-            ▼
+        <span style="
+            font-size:20px;
+            font-weight:bold;
+            color:white;
+        ">
+            🦈 SHARRK_OS
         </span>
 
     </div>
 
-    <!-- DROPDOWN -->
-    <div id="accountMenu"
-         class="account-menu hidden">
+    <!-- MENU -->
+    <a onclick="showPage('dashboard')">
 
-        <button onclick="showProfile()">
-            👤 Profile
-        </button>
+        <span>🖥️</span>
 
-        <button onclick="showSettings()">
-            ⚙️ Settings
-        </button>
+        <span class="text">
+            Dashboard
+        </span>
 
-        <button onclick="logout()">
-            🚪 Logout
-        </button>
+    </a>
+
+    <a onclick="showPage('traffic')">
+
+        <span>📡</span>
+
+        <span class="text">
+            Traffic Analysis
+        </span>
+
+    </a>
+
+    <a onclick="showPage('incidents')">
+
+        <span>🚨</span>
+
+        <span class="text">
+            Incident Analysis
+        </span>
+
+    </a>
+
+    <!-- PUSH TO BOTTOM -->
+    <div style="flex:1;"></div>
+
+    <!-- ========================= -->
+    <!-- ACCOUNT -->
+    <!-- ========================= -->
+    <div class="account-panel">
+
+        <!-- HEADER -->
+        <div class="account-header"
+             onclick="toggleAccountMenu()">
+
+            <div class="account-info">
+
+                <img src="/static/account.png"
+                     class="account-avatar">
+
+                <div class="account-text">
+
+                    <div id="accountName">
+                        SuperAdmin
+                    </div>
+
+                </div>
+
+            </div>
+
+            <span id="accountArrow">
+                ▼
+            </span>
+
+        </div>
+
+        <!-- DROPDOWN -->
+        <div id="accountMenu"
+             class="account-menu hidden">
+
+            <button onclick="showProfile()">
+                👤 Profile
+            </button>
+
+            <button onclick="showSettings()">
+                ⚙️ Settings
+            </button>
+
+            <button onclick="logout()">
+                🚪 Logout
+            </button>
+
+        </div>
 
     </div>
 
 </div>
 
+<!-- ========================= -->
 <!-- MAIN -->
-
+<!-- ========================= -->
 <div class="main">
 
 <!-- DASHBOARD -->
@@ -2007,15 +2132,35 @@ async function getLocation(ip) {
 // =========================
 async function loadData(){
 
-    let r = await fetch("/data");
+    // =========================
+    // 🔐 AUTH REQUEST
+    // =========================
+    let r = await fetch("/data", {
+        headers: {
+            "Authorization":
+                `Bearer ${localStorage.getItem("token")}`
+        }
+    });
+
+    // TOKEN EXPIRED
+    if (r.status === 401) {
+        logout();
+        return;
+    }
     let d = await r.json();
-
     if (!d) return;
-
-   globalData = d.slice(0, 100);
-
+    globalData = d.slice(0, 100);
     let html = "";
     let attack = 0;
+
+    // =========================
+    // 🔐 ROLE CHECK
+    // =========================
+    let role =
+        localStorage.getItem("role");
+
+    let showActions =
+        role === "superadmin";
 
     // =========================
     // 🧠 COUNT TYPES
@@ -2023,110 +2168,208 @@ async function loadData(){
     let counts = {};
 
     // =========================
-    // 🌍 GET LOCATIONS (FAST)
+    // 🌍 GET LOCATIONS
     // =========================
-   for (let x of d.slice(0, 15)) {
-
-    if (
-        !x.location ||
-        x.location === "Loading"
-    ) {
-
-        x.location = await getLocation(x.ip);
+    for (let x of d.slice(0, 15)) {
+        if (
+            !x.location ||
+            x.location === "Loading"
+        ) {
+            x.location =
+                await getLocation(x.ip);
+        }
     }
-}
 
     // =========================
     // 📋 BUILD TABLE
     // =========================
-   d.slice(0, 15).forEach(x => {
+    d.slice(0, 15).forEach(x => {
 
-        if (x.status === "ATTACK") attack++;
+        if (x.status === "ATTACK")
+            attack++;
 
-        let type = x.attack_type || x.status;
-        counts[type] = (counts[type] || 0) + 1;
+        let type =
+            x.attack_type || x.status;
 
-    html += `<tr>
-    <td>${x.time}</td>
-    <td>${x.ip}</td>
-    <td>${x.location}</td>
-    <td class="${x.status}">${x.status}</td>
-    <td>${x.final.toFixed(3)}</td>
-    
-   <td class="action-cell">
-    <button onclick="blockIP('${x.ip}')" class="btn stop">Deny</button>
-    <button onclick="allowIP('${x.ip}')" class="btn start">Allow</button>
-</td>
-    
-    </tr>`;  
+        counts[type] =
+            (counts[type] || 0) + 1;
+
+        // SAFE SCORE
+        let score = 0;
+
+        if (x.final !== undefined) {
+
+            score = Number(x.final);
+
+        } else if (x.score !== undefined) {
+
+            score = Number(x.score);
+        }
+
+        html += `
+
+        <tr>
+
+            <td>${x.time}</td>
+
+            <td>${x.ip}</td>
+
+            <td>${x.location}</td>
+
+            <td class="${x.status}">
+                ${x.status}
+            </td>
+
+            <td>
+                ${score.toFixed(3)}
+            </td>
+
+            ${showActions ? `
+
+            <td class="action-cell">
+
+                <button onclick="
+                    blockIP('${x.ip}')
+                "
+                class="btn stop">
+
+                    Deny
+
+                </button>
+
+                <button onclick="
+                    allowIP('${x.ip}')
+                "
+                class="btn start">
+
+                    Allow
+
+                </button>
+
+            </td>
+
+            ` : `
+
+            <td style="
+                color:#64748b;
+                font-size:12px;
+            ">
+                Restricted
+            </td>
+            `}
+        </tr>
+        `;
     });
 
     // =========================
     // 📋 UPDATE TABLE
     // =========================
-    document.getElementById("table").innerHTML = html;
-    let wrapper = document.querySelector(".table-wrapper");
-    
+    document.getElementById(
+        "table"
+    ).innerHTML = html;
+
+    let wrapper =
+        document.querySelector(
+            ".table-wrapper"
+        );
+
     if (wrapper) {
+
         wrapper.scrollTop = 0;
     }
+
     // =========================
     // 📊 UPDATE STATS
     // =========================
-    document.getElementById("total").innerText = d.length;
-    document.getElementById("attacks").innerText = attack;
+    document.getElementById(
+        "total"
+    ).innerText = d.length;
+
+    document.getElementById(
+        "attacks"
+    ).innerText = attack;
 
     // =========================
     // 🔐 SECURITY SCORE
     // =========================
-    let securityScore = 1 - (attack / d.length);
-    let percent = Math.round(securityScore * 100);
+    let securityScore =
+        1 - (attack / d.length);
 
-    let bar = document.getElementById("securityBar");
-    let text = document.getElementById("securityText");
+    let percent =
+        Math.round(
+            securityScore * 100
+        );
 
-    if (bar) bar.style.width = percent + "%";
-    if (text) text.innerText = percent + "% Secure";
+    let bar =
+        document.getElementById(
+            "securityBar"
+        );
+
+    let text =
+        document.getElementById(
+            "securityText"
+        );
+
+    if (bar)
+        bar.style.width =
+            percent + "%";
+
+    if (text)
+        text.innerText =
+            percent + "% Secure";
 
     // =========================
-    // 🧾 LOGS (optional)
+    // 🧾 LOGS
     // =========================
-    let logs = document.getElementById("logs");
+    let logs =
+        document.getElementById(
+            "logs"
+        );
+
     if (logs) {
-        logs.innerHTML = d.slice(-5).map(x =>
-            `${x.time} - ${x.status}`
-        ).join("<br>");
+        logs.innerHTML =
+            d.slice(-5).map(x =>
+                `${x.time} - ${x.status}`
+            ).join("<br>");
     }
 
     // =========================
-    // 🧠 ATTACK SUMMARY (TOP UI)
+    // 🧠 ATTACK SUMMARY
     // =========================
     let summaryHTML = "";
     let total = d.length || 1;
-
     for (let type in counts) {
         let count = counts[type];
-        let percent = Math.round((count / total) * 100);
+        let percent =
+            Math.round(
+                (count / total) * 100
+            );
 
         summaryHTML += `
             <div class="attack-box">
                 <h4>${type}</h4>
-                <p>${count} (${percent}%)</p>
+                <p>
+                    ${count} (${percent}%)
+                </p>
             </div>
         `;
     }
 
-    let summaryDiv = document.getElementById("attackSummary");
-    if (summaryDiv) summaryDiv.innerHTML = summaryHTML;
+    let summaryDiv =
+        document.getElementById(
+            "attackSummary"
+        );
+
+    if (summaryDiv)
+        summaryDiv.innerHTML =
+            summaryHTML;
 
     // =========================
-    // 📊 UPDATE GRAPH LAST
+    // 📊 UPDATE GRAPH
     // =========================
-    
     loadGraph();
-    updateStats(d)
+    updateStats(d);
 }
-
 function renderTable() {
 
     let html = "";
