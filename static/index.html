@@ -108,7 +108,11 @@ SIDEBAR
 
 /* COLLAPSED */
 .sidebar.closed .text,
+.sidebar.closed .icon,
+.sidebar.closed .logo-icon,
+.sidebar.closed .logo-text,
 .sidebar.closed .account-text,
+.sidebar.closed .account-avatar,
 .sidebar.closed #accountArrow,
 .sidebar.closed .account-menu {
     display: none;
@@ -1372,7 +1376,7 @@ async function loadGraph() {
     // ✅ make graph more dynamic
     let scores = recent.map(d => {
 
-    let base = Number(d.final || 0);
+    let base = Number(d.score || 0);
 
     // add tiny randomness for live effect
     return Number(
@@ -1510,7 +1514,7 @@ function updateStats(data) {
 
     let total = data.length;
 
-    let highRisk = data.filter(d => d.final > 0.7).length;
+    let highRisk = data.filter(d => d.score > 0.7).length;
     
     let mitigated = data.filter(d =>
     d.blocked === true ||
@@ -1648,7 +1652,7 @@ async function loadTrafficGraph() {
         let bins = [0, 0, 0, 0, 0];
 
         data.forEach(d => {
-            let s = d.final;
+            let s = d.score;
             if (s < 0.2) bins[0]++;
             else if (s < 0.4) bins[1]++;
             else if (s < 0.6) bins[2]++;
@@ -1672,7 +1676,7 @@ async function loadTrafficGraph() {
             let key = d[xType] || "Unknown";
 
             countMap[key] = (countMap[key] || 0) + 1;
-            scoreMap[key] = (scoreMap[key] || 0) + d.final;
+            scoreMap[key] = (scoreMap[key] || 0) + d.score;
         });
 
         // average score
@@ -1952,7 +1956,12 @@ async function loadMetrics() {
 
     try {
 
-        let r = await fetch("/metrics");
+        let r = await fetch("/metrics", {
+        headers: {
+            "Authorization":
+                `Bearer ${localStorage.getItem("token")}`
+        }
+    });
 
         let d = await r.json();
 
@@ -1987,10 +1996,11 @@ let startTime = Date.now();
     
 function connectWebSocket() {
 
-    socket = new WebSocket(
-        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`
-    );
+   let token = localStorage.getItem("token");
 
+    socket = new WebSocket(
+    `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws?token=${token}`
+    );
     socket.onopen = () => {
 
         console.log("✅ WebSocket connected");
@@ -2194,9 +2204,9 @@ async function loadData(){
         // SAFE SCORE
         let score = 0;
 
-        if (x.final !== undefined) {
+        if (x.score !== undefined) {
 
-            score = Number(x.final);
+            score = Number(x.score);
 
         } else if (x.score !== undefined) {
 
@@ -2388,7 +2398,7 @@ function renderTable() {
                 ${x.status}
             </td>
 
-            <td>${x.final.toFixed(3)}</td>
+            <td>${x.score.toFixed(3)}</td>
 
             <td class="action-cell">
                 <button onclick="blockIP('${x.ip}')"
@@ -2419,7 +2429,12 @@ async function loadAlerts() {
 
     try {
 
-        let r = await fetch("/incidents");
+        let r = await fetch("/incidents", {
+    headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
         let d = await r.json();
 
         let box = document.getElementById("alerts");
@@ -2460,10 +2475,10 @@ function detectAttackType(x) {
 
     if (x.status === "NORMAL") return "LEGITIMATE_TRAFFIC";
 
-    if (x.final > 0.85) return "SQL_INJECTION_DETECTED";
-    if (x.final > 0.7) return "DDOS_ATTACK_DETECTED";
-    if (x.final > 0.5) return "BRUTE_FORCE_ATTEMPT";
-    if (x.final > 0.3) return "SUSPICIOUS_ACTIVITY";
+    if (x.score > 0.85) return "SQL_INJECTION_DETECTED";
+    if (x.score > 0.7) return "DDOS_ATTACK_DETECTED";
+    if (x.score > 0.5) return "BRUTE_FORCE_ATTEMPT";
+    if (x.score > 0.3) return "SUSPICIOUS_ACTIVITY";
 
     return "UNKNOWN_THREAT";
 }
@@ -2481,7 +2496,7 @@ async function loadIncidentsPage() {
     // 📌 UPDATE TOP INFO
     document.getElementById("incidentIP").innerText = latest.ip;
     document.getElementById("confidence").innerText =
-        Math.round(latest.final * 100) + "%";
+        Math.round(latest.score * 100) + "%";
 
     // 🕒 TIMELINE
     let timeline = document.getElementById("timeline");
@@ -2497,7 +2512,7 @@ async function loadIncidentsPage() {
 
         timeline.innerHTML += `
             <div class="timeline-item ${cls}"
-                 onclick="selectIncident('${x.ip}', ${x.final}, '${x.status}')"
+                 onclick="selectIncident('${x.ip}', ${x.score}, '${x.status}')"
                  style="cursor:pointer;">
 
                 <div style="font-size:11px; color:#94a3b8;">
@@ -2513,7 +2528,7 @@ async function loadIncidentsPage() {
                 </div>
 
                 <div style="font-size:13px; margin-top:4px;">
-                    Score: ${x.final.toFixed(2)} 
+                    Score: ${x.score.toFixed(2)} 
                     | Status: ${x.status}
                 </div>
 
@@ -2525,7 +2540,7 @@ async function loadIncidentsPage() {
     let current = document.getElementById("incidentIP").innerText;
 
     if (!current || current === "-") {
-        selectIncident(latest.ip, latest.final, latest.status);
+        selectIncident(latest.ip, latest.score, latest.status);
     }
 }
 
