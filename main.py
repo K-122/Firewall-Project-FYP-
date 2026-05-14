@@ -546,7 +546,7 @@ from datetime import (
     timedelta
 )
 
-import jwt
+from jose import jwt
 import asyncio
 import os
 
