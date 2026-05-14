@@ -111,8 +111,48 @@ body::after {
     justify-content: center;
 }
 
+/* =========================
+ACCOUNT DROPDOWN
+========================= */
 
-/* MAIN LAYOUT */
+.account-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+}
+
+.account-menu {
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.account-menu button {
+    background:#1e293b;
+    color:white;
+    border:none;
+    padding:10px;
+    border-radius:8px;
+    cursor:pointer;
+    text-align:left;
+    transition:0.2s;
+}
+
+.account-menu button:hover {
+    background:#334155;
+}
+
+.hidden {
+    display:none;
+}
+
+#accountArrow {
+    color:#94a3b8;
+    font-size:12px;
+}
+
 
 /* =========================
    MAIN CONTENT
@@ -655,32 +695,56 @@ td button:last-child {
 
 <body>
 
-<div class="sidebar" id="sidebar">
+<!-- ACCOUNT PANEL -->
+<div class="account-panel">
 
-    <!-- TOGGLE -->
-    <div onclick="toggleSidebar()" style="cursor:pointer; margin-bottom:20px;">☰</div>
+    <!-- CLICKABLE HEADER -->
+    <div class="account-header"
+         onclick="toggleAccountMenu()">
 
-    <!-- LOGO -->
-    <div class="logo">
-        <span class="icon">🦈</span>
-        <span class="text">SHARRK_OS</span>
+        <div class="account-info">
+
+            <img src="/static/account.png"
+                 class="account-avatar">
+
+            <div class="account-text">
+
+                <div id="accountName">
+                    SuperAdmin
+                </div>
+
+                <div id="accountRole">
+                    superadmin
+                </div>
+
+            </div>
+
+        </div>
+
+        <span id="accountArrow">
+            ▼
+        </span>
+
     </div>
 
-    <!-- MENU -->
-<a onclick="showPage('dashboard')">
-    <span class="icon">🖥️</span>
-    <span class="text">Dashboard</span>
-</a>
+    <!-- DROPDOWN -->
+    <div id="accountMenu"
+         class="account-menu hidden">
 
-<a onclick="showPage('traffic')">
-    <span class="icon">📡</span>
-    <span class="text">Traffic Analysis</span>
-</a>
+        <button onclick="showProfile()">
+            👤 Profile
+        </button>
 
-<a onclick="showPage('incidents')">
-    <span class="icon">🚨</span>
-    <span class="text">Incidents</span>
-</a>
+        <button onclick="showSettings()">
+            ⚙️ Settings
+        </button>
+
+        <button onclick="logout()">
+            🚪 Logout
+        </button>
+
+    </div>
+
 </div>
 
 <!-- MAIN -->
@@ -1109,6 +1173,45 @@ function stopScan(){
 function addLog(msg){
     let box=document.getElementById("logs");
     box.innerHTML+=msg+"<br>";
+}
+
+// =========================
+// ACCOUNT MENU
+// =========================
+function toggleAccountMenu() {
+
+    let menu =
+        document.getElementById(
+            "accountMenu"
+        );
+
+    let arrow =
+        document.getElementById(
+            "accountArrow"
+        );
+
+    menu.classList.toggle(
+        "hidden"
+    );
+
+    arrow.innerText =
+        menu.classList.contains(
+            "hidden"
+        )
+        ? "▼"
+        : "▲";
+}
+
+function showProfile() {
+    alert(
+        "Profile Page"
+    );
+}
+
+function showSettings() {
+    alert(
+        "Settings Page"
+    );
 }
 
 // GRAPH
