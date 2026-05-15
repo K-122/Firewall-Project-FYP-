@@ -1292,8 +1292,15 @@ function stopScan(){
     document.getElementById("status").innerText = "Stopped";
 
     // 🔥 STOP GRAPH UPDATE
-    if (trafficChart) trafficChart.stop();
-    if (chart) chart.stop();
+    if (trafficChart) {
+    trafficChart.destroy();
+    trafficChart = null;
+}
+
+if (chart) {
+    chart.destroy();
+    chart = null;
+}
 }
 
 function addLog(msg){
@@ -1831,7 +1838,7 @@ function selectIncident(ip, score, status){
     document.getElementById("confidence").innerText =
         Math.round(score * 100) + "%";
 
-    let type = detectAttackType({final: score, status: status});
+    let type = detectAttackType({score: score, status: status});
 
     let risk = "";
     if (score > 0.7) risk = "🔴 HIGH RISK";
@@ -1895,8 +1902,12 @@ async function blockIP(ip) {
 
     try {
         let res = await fetch(`/block/${encodeURIComponent(ip)}`, {
-            method: "POST"
-        });
+    method: "POST",
+    headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
 
         if (!res.ok) {
             throw new Error("Failed");
@@ -1932,8 +1943,12 @@ async function allowIP(ip) {
     }
 
     await fetch(`/allow/${encodeURIComponent(ip)}`, {
-        method: "POST"
-    });
+    method: "POST",
+    headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
 
     alert("✅ Allowed: " + ip);
 
@@ -1948,7 +1963,13 @@ async function quarantineIP(ip) {
         return;
     }
 
-    await fetch(`/quarantine/${encodeURIComponent(ip)}`, { method: "POST" });
+    await fetch(`/quarantine/${encodeURIComponent(ip)}`, {
+    method: "POST",
+    headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
     alert("🛡️ Quarantined: " + ip);
 }
 
@@ -2026,7 +2047,7 @@ function connectWebSocket() {
    globalData.push(newLog);
 
     // limit memory
-    if (globalData.length > 20) {
+    if (globalData.length > 100) {
     globalData.shift();
 }
 
@@ -2377,30 +2398,51 @@ async function loadData(){
     loadGraph();
     updateStats(d);
 }
+    
 function renderTable() {
 
     let html = "";
 
     let attack = 0;
 
+    // 🔐 ROLE CHECK
+    let role =
+        localStorage.getItem("role");
+
+    let showActions =
+        role === "superadmin";
+
     globalData.slice(0, 15).forEach(x => {
+
         if (x.status === "ATTACK") {
             attack++;
         }
 
+        // SAFE SCORE
+        let score =
+            Number(x.score || 0);
+
         html += `
         <tr>
+
             <td>${x.time}</td>
+
             <td>${x.ip}</td>
-            <td>${x.location}</td>
+
+            <td>${x.location || "Loading"}</td>
 
             <td class="${x.status}">
                 ${x.status}
             </td>
 
-            <td>${x.score.toFixed(3)}</td>
+            <td>
+                ${score.toFixed(3)}
+            </td>
+
+            ${showActions ? `
 
             <td class="action-cell">
+
                 <button onclick="blockIP('${x.ip}')"
                         class="btn stop">
                     Deny
@@ -2410,19 +2452,33 @@ function renderTable() {
                         class="btn start">
                     Allow
                 </button>
+
             </td>
+
+            ` : `
+
+            <td style="
+                color:#64748b;
+                font-size:12px;
+            ">
+                Restricted
+            </td>
+
+            `}
+
         </tr>
         `;
     });
 
-    document.getElementById("table").innerHTML = html;
+    document.getElementById("table").innerHTML =
+        html;
 
     document.getElementById("total").innerText =
         globalData.length;
 
     document.getElementById("attacks").innerText =
         attack;
-}    
+}
     
 // ALERTS
 async function loadAlerts() {
@@ -2486,7 +2542,12 @@ function detectAttackType(x) {
 // Incident
 async function loadIncidentsPage() {
 
-    let res = await fetch("/incidents");
+   let res = await fetch("/incidents", {
+    headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
     let data = await res.json();
 
     if (!data || data.length === 0) return;
@@ -2537,17 +2598,21 @@ async function loadIncidentsPage() {
     });
 
     // 🧠 AUTO SELECT (ONLY FIRST TIME)
-    let current = document.getElementById("incidentIP").innerText;
-
-    if (!current || current === "-") {
-        selectIncident(latest.ip, latest.score, latest.status);
-    }
-}
+    selectIncident(
+    latest.ip,
+    latest.score,
+    latest.status
+);
 
 async function loadBlocked() {
 
     try {
-        let res = await fetch("/blocked");
+       let res = await fetch("/blocked", {
+    headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
         let data = await res.json();
 
         let box = document.getElementById("blockedList");
@@ -2594,7 +2659,12 @@ async function loadBlockedInline(){
     document.getElementById("blockedPanel").classList.remove("hidden");
 
     try {
-        let res = await fetch("/blocked");
+        let res = await fetch("/blocked", {
+    headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
         let data = await res.json();
 
         let box = document.getElementById("blockedListInline");
@@ -2632,8 +2702,12 @@ async function retrainModel() {
 
     try {
         let res = await fetch("/retrain", {
-            method: "POST"
-        });
+        method: "POST",
+        headers: {
+        "Authorization":
+            `Bearer ${localStorage.getItem("token")}`
+    }
+});
 
         if (!res.ok) {
             throw new Error("Failed");
@@ -2671,14 +2745,6 @@ function startMainLoop() {
 
     }, 2000);
 }
-
-setInterval(() => {
-
-    if (!chart) return;
-
-    loadGraph();
-
-}, 1000);
 
     
 window.onload = () => {
