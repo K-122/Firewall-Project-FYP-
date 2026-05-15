@@ -863,6 +863,10 @@ td button:last-child {
                 ⚙️ Settings
             </button>
 
+            <button onclick="switchAccount()">
+                🔄 Switch Account
+            </button>
+            
             <button onclick="logout()">
                 🚪 Logout
             </button>
@@ -1009,7 +1013,9 @@ td button:last-child {
                         <th>Location</th>
                         <th>Status</th>
                         <th>Score</th>
-                        <th>Action</th>
+                        <th id="actionHeader">
+                            Action
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="table"></tbody>
@@ -1268,12 +1274,30 @@ function startUptimeLoop() {
 
     setInterval(() => {
 
-        if (!systemActive) return;
+        // system stopped
+        if (
+            !systemActive ||
+            !startTime
+        ) {
 
-        let uptimeSec =
-            Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById(
+                "uptime"
+            ).innerText = "0s";
 
-        document.getElementById("uptime").innerText =
+            return;
+        }
+
+        // uptime seconds
+        let uptimeSec = Math.floor(
+
+            (Date.now() - startTime)
+            / 1000
+        );
+
+        document.getElementById(
+            "uptime"
+        ).innerText =
+
             formatTime(uptimeSec);
 
     }, 1000);
@@ -1336,17 +1360,63 @@ function toggleAccountMenu() {
 }
 
 function showProfile() {
+
     alert(
-        "Profile Page"
+`👤 USER PROFILE
+
+Username: SuperAdmin
+Role: Administrator
+Status: Active
+Session: Authenticated`
     );
 }
 
 function showSettings() {
+
     alert(
-        "Settings Page"
+`⚙️ SETTINGS
+
+• Sidebar Toggle
+• Theme Settings
+• Notification Control
+• System Preferences`
     );
 }
 
+function logout() {
+
+    // stop system
+    systemActive = false;
+
+    // stop loops
+    if (mainLoop) {
+
+        clearInterval(mainLoop);
+
+        mainLoop = null;
+    }
+
+    // close websocket
+    if (socket) {
+
+        socket.close();
+    }
+
+    // clear auth
+    localStorage.removeItem(
+        "token"
+    );
+
+    localStorage.removeItem(
+        "role"
+    );
+
+    alert("🚪 Logged out");
+
+    // refresh page
+    location.reload();
+}
+    
 async function autoLogin() {
 
     let r = await fetch("/login", {
@@ -1377,6 +1447,167 @@ async function autoLogin() {
     console.log("✅ Logged in");
 }
 
+async function switchAccount() {
+
+    let currentRole =
+        localStorage.getItem("role");
+
+    let nextUser = "";
+    let nextPass = "";
+
+    // =========================
+    // SWITCH TO FINANCE
+    // =========================
+    if (currentRole === "superadmin") {
+
+        nextUser = "finance";
+        nextPass = "finance123";
+    }
+
+    // =========================
+    // SWITCH TO SUPERADMIN
+    // =========================
+    else {
+
+        nextUser = "superadmin";
+        nextPass = "admin123";
+    }
+
+    try {
+
+        let r = await fetch("/login", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify({
+
+                username: nextUser,
+                password: nextPass
+            })
+        });
+
+        let d = await r.json();
+
+        // =========================
+        // SAVE TOKEN
+        // =========================
+        localStorage.setItem(
+            "token",
+            d.access_token
+        );
+
+        localStorage.setItem(
+            "role",
+            d.role
+        );
+
+        // =========================
+        // UPDATE UI
+        // =========================
+        document.getElementById(
+            "accountName"
+        ).innerText = nextUser;
+
+        document.getElementById(
+            "accountRole"
+        ).innerText =
+            d.role.toUpperCase();
+
+        // =========================
+        // REFRESH PERMISSIONS
+        // =========================
+        applyRolePermissions();
+
+        alert(
+            "🔄 Switched to " +
+            nextUser
+        );
+
+    } catch (e) {
+
+        alert(
+            "Switch account failed"
+        );
+
+        console.error(e);
+    }
+}
+
+// =========================
+// ROLE CONTROL
+// =========================
+function applyRolePermissions() {
+
+    let role =
+        localStorage.getItem(
+            "role"
+        );
+
+    // =========================
+    // ACTION CARDS
+    // =========================
+    let actionCards =
+        document.querySelectorAll(
+            ".action-card"
+        );
+
+    // =========================
+    // ACTION HEADER
+    // =========================
+    let actionHeader =
+        document.getElementById(
+            "actionHeader"
+        );
+
+    // =========================
+    // FINANCE STAFF
+    // =========================
+    if (role === "finance") {
+
+        // hide incident actions
+        actionCards.forEach(x => {
+
+            x.style.display = "none";
+        });
+
+        // hide table action column
+        if (actionHeader) {
+
+            actionHeader.style.display =
+                "none";
+        }
+    }
+
+    // =========================
+    // SUPERADMIN
+    // =========================
+    else {
+
+        // show incident actions
+        actionCards.forEach(x => {
+
+            x.style.display = "block";
+        });
+
+        // show table action column
+        if (actionHeader) {
+
+            actionHeader.style.display =
+                "";
+        }
+    }
+
+    // =========================
+    // RE-RENDER TABLE
+    // =========================
+    renderTable();
+}
+    
 // GRAPH
 let chart;
 
@@ -1549,14 +1780,17 @@ function updateStats(data) {
     }
 }
 
-    let total = data.length;
+    let total = data.filter(d =>
+    d.status !== "NORMAL"
+    ).length;
 
-    let highRisk = data.filter(d => d.score > 0.7).length;
+    let highRisk =
+    data.filter(d =>
+        d.status === "ATTACK"
+    ).length;
     
-    let mitigated = data.filter(d =>
-    d.blocked === true ||
-    d.status === "BLOCKED"
-).length;
+    let mitigated =
+    blockedIPs.length || 0;
 
     let uptimeSec =
     Math.floor((Date.now() - startTime) / 1000);
@@ -1608,30 +1842,54 @@ function formatTime(seconds) {
 
 function calculateEntropy(data) {
 
-    if (!data || data.length === 0) return 0;
+    if (!data || data.length === 0)
+        return 0;
 
     let counts = {};
     let total = data.length;
 
-    // count attack types
+    // =========================
+    // COUNT ATTACK TYPES
+    // =========================
     data.forEach(d => {
-        let type = d.attack_type || d.status || "UNKNOWN";
-        counts[type] = (counts[type] || 0) + 1;
+
+        let type =
+            detectAttackType(d);
+
+        counts[type] =
+            (counts[type] || 0) + 1;
     });
 
-    // Shannon entropy
+    // =========================
+    // SHANNON ENTROPY
+    // =========================
     let entropy = 0;
 
     for (let key in counts) {
-        let p = counts[key] / total;
-        entropy -= p * Math.log2(p);
+
+        let p =
+            counts[key] / total;
+
+        entropy -=
+            p * Math.log2(p);
     }
 
-    // normalize to percentage
-    let maxEntropy = Math.log2(Object.keys(counts).length || 1);
-    let normalized = maxEntropy ? (entropy / maxEntropy) : 0;
+    // =========================
+    // NORMALIZE
+    // =========================
+    let maxEntropy =
+        Math.log2(
+            Object.keys(counts).length || 1
+        );
 
-    return (normalized * 100).toFixed(2);
+    let normalized =
+        maxEntropy
+        ? entropy / maxEntropy
+        : 0;
+
+    return (
+        normalized * 100
+    ).toFixed(2);
 }
     
 //Traffic graph
@@ -2160,7 +2418,11 @@ async function blockIP(ip) {
         if (!res.ok) {
             throw new Error("Failed");
         }
-
+        
+        if (!blockedIPs.includes(ip)) {
+            blockedIPs.push(ip);
+        }
+        
         alert("🚫 Blocked: " + ip);
 
         // ✅ OPEN MODAL (Traffic page)
@@ -2625,36 +2887,28 @@ async function loadData(){
             ${showActions ? `
 
             <td class="action-cell">
-
+            
                 <button onclick="
                     blockIP('${escapeHTML(x.ip)}')
                 "
                 class="btn stop">
-
+            
                     Deny
-
+            
                 </button>
-
+            
                 <button onclick="
                     allowIP('${escapeHTML(x.ip)}')
                 "
                 class="btn start">
 
-                    Allow
+                Allow
 
-                </button>
+        </button>
 
-            </td>
+    </td>
 
-            ` : `
-
-            <td style="
-                color:#64748b;
-                font-size:12px;
-            ">
-                Restricted
-            </td>
-            `}
+    ` : ``}
         </tr>
         `;
     });
@@ -2813,30 +3067,21 @@ function renderTable() {
 
             ${showActions ? `
 
-            <td class="action-cell">
-
-                <button onclick="blockIP('${escapeHTML(x.ip)}')"
-                        class="btn stop">
-                    Deny
-                </button>
-
-                <button onclick="allowIP('${escapeHTML(x.ip)}')"
-                        class="btn start">
-                    Allow
-                </button>
-
-            </td>
-
-            ` : `
-
-            <td style="
-                color:#64748b;
-                font-size:12px;
-            ">
-                Restricted
-            </td>
-
-            `}
+        <td class="action-cell">
+        
+            <button onclick="blockIP('${escapeHTML(x.ip)}')"
+                    class="btn stop">
+                Deny
+            </button>
+        
+            <button onclick="allowIP('${escapeHTML(x.ip)}')"
+                    class="btn start">
+                Allow
+            </button>
+        
+        </td>
+        
+        ` : ``}
 
         </tr>
         `;
