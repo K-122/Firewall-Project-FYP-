@@ -115,7 +115,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # USERS + ROLES
 # =========================
 VALID_USERS = {
-
     "superadmin": {
 
         "password":
@@ -137,7 +136,7 @@ VALID_USERS = {
             ),
 
         "role":
-            "FinanceStaff"
+            "finance"
     }
 }
 
