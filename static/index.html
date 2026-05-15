@@ -837,11 +837,23 @@ td button:last-child {
 
                 <div class="account-text">
 
+                <div>
+            
                     <div id="accountName">
                         SuperAdmin
                     </div>
-
+            
+                    <div id="accountRole"
+                         style="
+                            font-size:11px;
+                            color:#94a3b8;
+                         ">
+                        SUPERADMIN
+                    </div>
+            
                 </div>
+            
+            </div>
 
             </div>
 
@@ -1417,40 +1429,124 @@ function logout() {
     location.reload();
 }
     
+// =========================
+// AUTO LOGIN
+// =========================
 async function autoLogin() {
 
-    let r = await fetch("/login", {
-        method: "POST",
+    // =========================
+    // RESTORE LAST ROLE
+    // =========================
+    let savedRole =
+        localStorage.getItem(
+            "role"
+        );
 
-        headers: {
-            "Content-Type": "application/json"
-        },
+    let username = "";
+    let password = "";
 
-        body: JSON.stringify({
-            username: "superadmin",
-            password: "admin123"
-        })
-    });
+    // =========================
+    // FINANCE
+    // =========================
+    if (savedRole === "finance") {
 
-    let d = await r.json();
+        username = "finance";
+        password = "finance123";
+    }
 
-    localStorage.setItem(
-        "token",
-        d.access_token
-    );
+    // =========================
+    // DEFAULT SUPERADMIN
+    // =========================
+    else {
 
-    localStorage.setItem(
-        "role",
-        d.role
-    );
+        username = "superadmin";
+        password = "admin123";
+    }
 
-    console.log("✅ Logged in");
+    try {
+
+        let r = await fetch("/login", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify({
+
+                username,
+                password
+            })
+        });
+
+        // =========================
+        // LOGIN FAILED
+        // =========================
+        if (!r.ok) {
+
+            throw new Error(
+                "Auto login failed"
+            );
+        }
+
+        let d = await r.json();
+
+        // =========================
+        // SAVE TOKEN
+        // =========================
+        localStorage.setItem(
+            "token",
+            d.access_token
+        );
+
+        localStorage.setItem(
+            "role",
+            d.role
+        );
+
+        // =========================
+        // UPDATE ACCOUNT UI
+        // =========================
+        document.getElementById(
+            "accountName"
+        ).innerText =
+            username;
+
+        document.getElementById(
+            "accountRole"
+        ).innerText =
+            d.role.toUpperCase();
+
+        // =========================
+        // APPLY ROLE CONTROL
+        // =========================
+        applyRolePermissions();
+
+        console.log(
+            "✅ Logged in as:",
+            username
+        );
+
+    } catch (e) {
+
+        console.error(
+            "❌ Auto login failed:",
+            e
+        );
+    }
 }
 
+// =========================
+// SWITCH ACCOUNT
+// =========================
 async function switchAccount() {
 
     let currentRole =
-        localStorage.getItem("role");
+        localStorage.getItem(
+            "role"
+        );
 
     let nextUser = "";
     let nextPass = "";
@@ -1491,6 +1587,16 @@ async function switchAccount() {
             })
         });
 
+        // =========================
+        // LOGIN FAILED
+        // =========================
+        if (!r.ok) {
+
+            throw new Error(
+                "Login failed"
+            );
+        }
+
         let d = await r.json();
 
         // =========================
@@ -1507,7 +1613,7 @@ async function switchAccount() {
         );
 
         // =========================
-        // UPDATE UI
+        // UPDATE ACCOUNT UI
         // =========================
         document.getElementById(
             "accountName"
@@ -1519,9 +1625,14 @@ async function switchAccount() {
             d.role.toUpperCase();
 
         // =========================
-        // REFRESH PERMISSIONS
+        // APPLY ROLE CONTROL
         // =========================
         applyRolePermissions();
+
+        // =========================
+        // RELOAD TABLE
+        // =========================
+        renderTable();
 
         alert(
             "🔄 Switched to " +
@@ -1530,11 +1641,11 @@ async function switchAccount() {
 
     } catch (e) {
 
+        console.error(e);
+
         alert(
             "Switch account failed"
         );
-
-        console.error(e);
     }
 }
 
@@ -1549,19 +1660,19 @@ function applyRolePermissions() {
         );
 
     // =========================
-    // ACTION CARDS
-    // =========================
-    let actionCards =
-        document.querySelectorAll(
-            ".action-card"
-        );
-
-    // =========================
     // ACTION HEADER
     // =========================
     let actionHeader =
         document.getElementById(
             "actionHeader"
+        );
+
+    // =========================
+    // INCIDENT ACTIONS
+    // =========================
+    let actionCards =
+        document.querySelectorAll(
+            ".action-card"
         );
 
     // =========================
@@ -1572,7 +1683,8 @@ function applyRolePermissions() {
         // hide incident actions
         actionCards.forEach(x => {
 
-            x.style.display = "none";
+            x.style.display =
+                "none";
         });
 
         // hide table action column
@@ -1591,7 +1703,8 @@ function applyRolePermissions() {
         // show incident actions
         actionCards.forEach(x => {
 
-            x.style.display = "block";
+            x.style.display =
+                "block";
         });
 
         // show table action column
@@ -1601,12 +1714,8 @@ function applyRolePermissions() {
                 "";
         }
     }
-
-    // =========================
-    // RE-RENDER TABLE
-    // =========================
-    renderTable();
 }
+
     
 // GRAPH
 let chart;
