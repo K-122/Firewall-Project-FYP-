@@ -356,6 +356,7 @@ DROPDOWN
 .action-card .btn {
     width: 100%;
     text-align: center;
+    margin-bottom: 10px;
 }
 
 #blockedPanel {
@@ -2251,42 +2252,14 @@ async function loadTrafficGraph() {
         : scores.map(
             s => getColor(null, s)
         );
-
     // =========================
-    // UPDATE EXISTING CHART
+    // ALWAYS DESTROY OLD CHART
     // =========================
     if (trafficChart) {
 
-        trafficChart.data.labels =
-            labels;
+    trafficChart.destroy();
 
-        // PIE / HISTOGRAM
-        if (
-            currentType === "pie" ||
-            currentType === "histogram"
-        ) {
-
-            trafficChart.data.datasets[0].data =
-                scores;
-
-            trafficChart.data.datasets[0]
-                .backgroundColor =
-                bgColors;
-        }
-
-        // BAR / LINE
-        else {
-
-            trafficChart.data.datasets[0].data =
-                counts;
-
-            trafficChart.data.datasets[1].data =
-                scores;
-        }
-
-        trafficChart.update();
-
-        return;
+    trafficChart = null;
     }
 
     // =========================
