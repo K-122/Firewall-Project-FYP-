@@ -627,7 +627,13 @@ def monitor():
 
                 continue
 
-            process_line(line)
+            record = process_line(line)
+
+            if record:
+
+                asyncio.run(
+                    broadcast(record)
+                )
 
 # =========================
 # STARTUP
