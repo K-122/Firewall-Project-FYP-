@@ -2544,7 +2544,7 @@ async function handleBlockClick() {
     await loadBlocked();
 }
     
-async function blockIP(ip){
+async function blockIP(event, ip){
 
     let button = event.target;
 
@@ -2564,15 +2564,11 @@ async function blockIP(ip){
         );
 
         if(!res.ok){
-            throw new Error(
-                "Block failed"
-            );
+            throw new Error();
         }
 
-        // refresh blocked data
         await loadBlocked();
 
-        // show blocked modal
         document
             .getElementById(
                 "blockedModal"
@@ -2591,16 +2587,15 @@ async function blockIP(ip){
     }
 }
 
-async function allowIP(ip){
+async function allowIP(event, ip){
 
-    let button =
-        event.target;
+    let button = event.target;
 
     button.disabled = true;
 
     try{
 
-        let res = await fetch(
+        await fetch(
             `/allow/${encodeURIComponent(ip)}`,
             {
                 method:"POST",
@@ -2611,24 +2606,9 @@ async function allowIP(ip){
             }
         );
 
-        if(!res.ok){
-            throw new Error(
-                "Allow failed"
-            );
-        }
-
-        await loadBlocked();
-
-    }catch(e){
-
-        console.error(
-            e
-        );
-
     }finally{
 
         button.disabled = false;
-
     }
 }
     
@@ -3097,20 +3077,24 @@ style="cursor:pointer;">
         ${score.toFixed(3)}
     </td>
     ${showActions ? `
-    <td class="action-cell">
-        <button
-            onclick='event.stopPropagation();
-                     blockIP(${JSON.stringify(x.ip)})'
-            class="btn stop">
-            Deny
-        </button>
-        <button
-            onclick='event.stopPropagation();
-                     allowIP(${JSON.stringify(x.ip)})'
-            class="btn start">
-            Allow
-        </button>
-    </td>
+    <td class="action-cell"
+    onclick="event.stopPropagation()">
+    
+    <button
+    type="button"
+    class="btn stop"
+    onclick="blockIP(event, ${JSON.stringify(x.ip)})">
+    Deny
+    </button>
+    
+    <button
+    type="button"
+    class="btn start"
+    onclick="allowIP(event, ${JSON.stringify(x.ip)})">
+    Allow
+    </button>
+
+</td>
     ` : ``}
 </tr>
         `;
