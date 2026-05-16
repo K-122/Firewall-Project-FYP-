@@ -289,9 +289,14 @@ DROPDOWN
 .stop { background:#ef4444; color:white; }
 
 /* ACTION BUTTON */
-th:nth-child(6),
-td:nth-child(6){
+th:last-child{
+    text-align:center;
+    vertical-align:middle;
+    left: -5px;
+}
 
+/* Keep buttons unchanged */
+td:last-child{
     text-align:center;
     vertical-align:middle;
 }
@@ -1035,9 +1040,7 @@ td button:last-child {
                         <th>Location</th>
                         <th>Status</th>
                         <th>Score</th>
-                        <th id="actionHeader">
-                            Action
-                        </th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="table"></tbody>
@@ -2554,25 +2557,11 @@ async function blockIP(ip){
             }
         );
 
-        let data =
-            await res.json();
-
         if(!res.ok){
-
-            throw new Error(
-                data.detail ||
-                "Failed"
-            );
+            throw new Error("Block failed");
         }
 
-        if(
-            !blockedIPs.includes(ip)
-        ){
-
-            blockedIPs.push(ip);
-        }
-
-        // OPEN POPUP
+        // open popup immediately
         document
         .getElementById(
             "blockedModal"
@@ -2583,21 +2572,19 @@ async function blockIP(ip){
 
         await loadBlocked();
 
-        await loadBlockedInline();
-
+        // remove alert() completely
         renderTable();
 
     }catch(e){
 
-        console.error(e);
-
-        alert(
-            "❌ " + e.message
+        console.error(
+            "BLOCK ERROR",
+            e
         );
     }
 }
 
-async function allowIP(ip){
+aasync function allowIP(ip){
 
     try{
 
@@ -2612,39 +2599,22 @@ async function allowIP(ip){
             }
         );
 
-        let data =
-            await res.json();
-
         if(!res.ok){
 
             throw new Error(
-                data.detail ||
                 "Allow failed"
             );
         }
 
-        // remove local cache
-        blockedIPs =
-        blockedIPs.filter(
-            x => x !== ip
-        );
-
-        alert(
-            "✅ Allowed: " + ip
-        );
-
         await loadBlocked();
-
-        await loadBlockedInline();
 
         renderTable();
 
     }catch(e){
 
-        console.error(e);
-
-        alert(
-            "❌ " + e.message
+        console.error(
+            "ALLOW ERROR",
+            e
         );
     }
 }
@@ -3571,17 +3541,9 @@ function closeBlockedInline(){
 
 async function loadBlockedInline(){
 
-    document
-        .getElementById(
-            "blockedPanel"
-        )
-        .classList.remove(
-            "hidden"
-        );
-
     try{
 
-        let res = await fetch(
+        let r = await fetch(
             "/blocked",
             {
                 headers:{
@@ -3592,7 +3554,7 @@ async function loadBlockedInline(){
         );
 
         let data =
-            await res.json();
+            await r.json();
 
         let box =
             document.getElementById(
@@ -3601,33 +3563,44 @@ async function loadBlockedInline(){
 
         if(!box) return;
 
-        let html = "";
+        let html="";
 
         data.forEach(item=>{
 
             html += `
+
             <div class="blocked-item">
 
                 <span>
-                    ${escapeHTML(item.ip)}
+
+                    ${escapeHTML(
+                        item.ip
+                    )}
+
                 </span>
 
                 <span
-                    style="color:#94a3b8"
-                >
-                    [${escapeHTML(item.location)}]
+                style="
+                color:#94a3b8
+                ">
+
+                [${escapeHTML(
+                    item.location
+                )}]
+
                 </span>
 
             </div>
             `;
         });
 
-        box.innerHTML = html;
+        box.innerHTML=html;
 
-    }
-    catch(e){
+    }catch(e){
 
-        console.error(e);
+        console.error(
+            e
+        );
     }
 }
 
