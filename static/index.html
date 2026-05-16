@@ -289,18 +289,12 @@ DROPDOWN
 .stop { background:#ef4444; color:white; }
 
 /* ACTION BUTTON */
-th:last-child{
-    text-align:center;
-    vertical-align:middle;
-    left: -5px;
-}
-
-/* Keep buttons unchanged */
-td:last-child{
+th:nth-child(6),
+td:nth-child(6){
     text-align:center;
     vertical-align:middle;
 }
-
+    
 .action-cell{
     display:flex;
     justify-content:center;
@@ -2545,6 +2539,15 @@ async function handleBlockClick() {
     
 async function blockIP(ip){
 
+    let buttons =
+        document.querySelectorAll(
+            ".action-cell button"
+        );
+
+    buttons.forEach(
+        b => b.disabled = true
+    );
+
     try{
 
         let res = await fetch(
@@ -2559,33 +2562,36 @@ async function blockIP(ip){
         );
 
         if(!res.ok){
-            throw new Error("Block failed");
+            throw new Error();
         }
-
-        // open popup immediately
-        document
-        .getElementById(
-            "blockedModal"
-        )
-        .classList.remove(
-            "hidden"
-        );
 
         await loadBlocked();
 
-        // remove alert() completely
-        renderTable();
-
     }catch(e){
 
-        console.error(
-            "BLOCK ERROR",
-            e
+        console.error(e);
+
+    }finally{
+
+        buttons.forEach(
+            b => b.disabled=false
         );
+
+       loadBlocked();
     }
 }
 
 async function allowIP(ip){
+
+    let buttons =
+        document.querySelectorAll(
+            ".action-cell button"
+        );
+
+    // disable buttons temporarily
+    buttons.forEach(
+        b => b.disabled = true
+    );
 
     try{
 
@@ -2607,15 +2613,21 @@ async function allowIP(ip){
             );
         }
 
+        // refresh blocked list
         await loadBlocked();
-
-        renderTable();
 
     }catch(e){
 
         console.error(
-            "ALLOW ERROR",
+            "ALLOW ERROR:",
             e
+        );
+
+    }finally{
+
+        // re-enable buttons
+        buttons.forEach(
+            b => b.disabled = false
         );
     }
 }
@@ -2832,9 +2844,6 @@ function connectWebSocket() {
                 .then(loc => {
 
                     newLog.location = loc;
-
-                    // refresh table only
-                    renderTable();
                 })
 
                 .catch(() => {
@@ -3030,15 +3039,24 @@ async function loadData(){
     // =========================
     // 🌍 GET LOCATIONS
     // =========================
-    for (let x of d.slice(0, 15)) {
-        if (
+    await Promise.all(
+
+    d.slice(0,15).map(async x => {
+
+        if(
             !x.location ||
             x.location === "Loading"
-        ) {
+        ){
+
             x.location =
-                await getLocation(x.ip);
+                await getLocation(
+                    x.ip
+                );
         }
-    }
+
+    })
+
+    );
 
     // =========================
     // 📋 BUILD TABLE
@@ -3269,39 +3287,24 @@ function renderTable() {
 
             ${showActions ? `
 
-            <td>
-
-                <div class="action-cell">
-
-                    <button
-                    type="button"
-                    class="btn stop"
-
-                    onclick="
-                    event.stopPropagation();
-                    blockIP(${JSON.stringify(x.ip)})
-                    ">
-
-                    Deny
-
-                    </button>
-
-                    <button
-                    type="button"
-                    class="btn start"
-
-                    onclick="
-                    event.stopPropagation();
-                    allowIP(${JSON.stringify(x.ip)})
-                    ">
-
-                    Allow
-
-                    </button>
-
-                </div>
-
-            </td>
+        <td class="action-cell"
+            onclick="event.stopPropagation()">
+        
+            <button
+            type="button"
+            class="btn stop"
+            onclick="blockIP(${JSON.stringify(x.ip)})">
+            Deny
+            </button>
+        
+            <button
+            type="button"
+            class="btn start"
+            onclick="allowIP(${JSON.stringify(x.ip)})">
+            Allow
+            </button>
+        
+        </td>
 
             ` : ""}
 
