@@ -2498,25 +2498,36 @@ function selectIncident(ip, score, status){
 }
 
 async function handleBlockClick() {
+    
+    let ip =
+        document.getElementById(
+            "incidentIP"
+        ).innerText.trim();
 
-    let modal = document.getElementById("blockedModal");
+    // nothing selected
+    if (
+        !ip ||
+        ip === "-"
+    ) {
 
-    // ❌ NO INCIDENT SELECTED
-    if (!selectedIP) {
-        modal.classList.remove("hidden");
-        loadBlocked();   // show list only
+        alert(
+            "⚠ Select an incident first"
+        );
+
         return;
     }
 
-    // ✅ INCIDENT SELECTED → BLOCK FIRST
-    await blockIP(selectedIP);
+    await blockIP(ip);
 
-    // ✅ SHOW POPUP AFTER BLOCK
-    modal.classList.remove("hidden");
-    loadBlocked();
+    document
+        .getElementById(
+            "blockedModal"
+        )
+        .classList.remove(
+            "hidden"
+        );
 
-    // 🔄 reset selection (optional)
-    selectedIP = null;
+    await loadBlocked();
 }
     
 async function blockIP(ip) {
@@ -3002,9 +3013,7 @@ async function getLocation(ip) {
 // =========================
 async function loadData(){
 
-    // =========================
     // 🔐 AUTH REQUEST
-    // =========================
     let r = await fetch("/data", {
         headers: {
             "Authorization":
@@ -3065,50 +3074,46 @@ async function loadData(){
             (counts[type] || 0) + 1;
 
         // SAFE SCORE
-        // SAFE SCORE
         let score = Number(x.score || 0);
         
         // prevent NaN
         if (isNaN(score)) {
             score = 0;
         }
-
-        html += `
-
-        <tr>
-
-            <td>${escapeHTML(x.time)}</td>
-
-            <td>${escapeHTML(x.ip)}</td>
-
-            <td>${escapeHTML(x.location || "Unknown")}</td>
-
-            <td class="${escapeHTML(x.status)}">
-                ${escapeHTML(x.status)}
-            </td>
-
-            <td>
-                ${score.toFixed(3)}
-            </td>
-
-            ${showActions ? `
-
-            <td class="action-cell">
-            
-               <button onclick='blockIP(${JSON.stringify(x.ip)})'
-                class="btn stop">
-                Deny
-            </button>
         
-        <button onclick='allowIP(${JSON.stringify(x.ip)})'
-          class="btn start">
+        html += `
+        <tr onclick='selectIncident(
+    ${JSON.stringify(x.ip)},
+    ${Number(x.score || 0)},
+    ${JSON.stringify(x.status)}
+)'
+style="cursor:pointer;">
+    <td>${escapeHTML(x.time)}</td>
+    <td>${escapeHTML(x.ip)}</td>
+    <td>${escapeHTML(x.location || "Unknown")}</td>
+    <td class="${escapeHTML(x.status)}">
+        ${escapeHTML(x.status)}
+    </td>
+    <td>
+        ${score.toFixed(3)}
+    </td>
+    ${showActions ? `
+    <td class="action-cell">
+        <button
+            onclick='event.stopPropagation();
+                     blockIP(${JSON.stringify(x.ip)})'
+            class="btn stop">
+            Deny
+        </button>
+        <button
+            onclick='event.stopPropagation();
+                     allowIP(${JSON.stringify(x.ip)})'
+            class="btn start">
             Allow
         </button>
-
     </td>
-
     ` : ``}
-        </tr>
+</tr>
         `;
     });
 
