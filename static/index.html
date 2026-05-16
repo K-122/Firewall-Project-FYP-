@@ -2740,16 +2740,16 @@ let graphThrottle = false;
 function connectWebSocket() {
 
     // =========================
-    // CLEAR OLD SOCKET
+    // PREVENT DUPLICATE SOCKETS
     // =========================
-    if (socket) {
-
-        try {
-            socket.close();
-        }
-        catch (e) {
-            console.log(e);
-        }
+    if (
+        socket &&
+        (
+            socket.readyState === WebSocket.OPEN ||
+            socket.readyState === WebSocket.CONNECTING
+        )
+    ) {
+        return;
     }
 
     // =========================
@@ -2762,10 +2762,19 @@ function connectWebSocket() {
     }
 
     // =========================
-    // TOKEN
+    // TOKEN CHECK
     // =========================
     let token =
         localStorage.getItem("token");
+
+    if (!token) {
+
+        console.log(
+            "⚠ No token found"
+        );
+
+        return;
+    }
 
     // =========================
     // CREATE SOCKET
@@ -2793,7 +2802,7 @@ function connectWebSocket() {
 
             if (
                 socket &&
-                socket.readyState === 1
+                socket.readyState === WebSocket.OPEN
             ) {
 
                 socket.send("ping");
@@ -2829,13 +2838,16 @@ function connectWebSocket() {
             }
 
             // =========================
-            // ASYNC LOCATION
+            // GET LOCATION
             // =========================
             getLocation(newLog.ip)
 
                 .then(loc => {
 
                     newLog.location = loc;
+
+                    // rerender after location loaded
+                    renderTable();
                 })
 
                 .catch(() => {
@@ -2864,9 +2876,6 @@ function connectWebSocket() {
             // =========================
             updateStats(globalData);
 
-            // =========================
-            // UPDATE METRICS
-            // =========================
             loadMetrics();
 
             // =========================
@@ -2878,14 +2887,18 @@ function connectWebSocket() {
 
                 requestAnimationFrame(() => {
 
-                    // dashboard graph
                     loadGraph();
 
-                    // traffic graph only if visible
+                    let traffic =
+                        document.getElementById(
+                            "traffic"
+                        );
+
                     if (
-                        !document
-                            .getElementById("traffic")
-                            .classList.contains("hidden")
+                        traffic &&
+                        !traffic.classList.contains(
+                            "hidden"
+                        )
                     ) {
 
                         loadTrafficGraph();
@@ -2895,7 +2908,8 @@ function connectWebSocket() {
                 });
             }
 
-        } catch (e) {
+        }
+        catch (e) {
 
             console.error(
                 "WebSocket parse error:",
@@ -2934,12 +2948,18 @@ function connectWebSocket() {
             pingInterval = null;
         }
 
+        // prevent stale socket
+        socket = null;
+
         // reconnect
-        setTimeout(() => {
+        if (systemActive) {
 
-            connectWebSocket();
+            setTimeout(() => {
 
-        }, 3000);
+                connectWebSocket();
+
+            }, 3000);
+        }
     };
 }
     
