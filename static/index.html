@@ -2972,15 +2972,18 @@ async function loadData(){
     let d = await r.json();
     if (!d) return;
     
-    globalData = d.slice(0, 100);
+    globalData = d.slice(0,100);
 
-    // =========================
     // 🌍 GET LOCATIONS
-    // =========================
     await Promise.all(
-        d.slice(0,15).map(async x => {
-            if(!x.location || x.location === "Loading"){
-                x.location = await getLocation(x.ip);
+        globalData.slice(0,15).map(async x => {
+    
+            if(!x.location || x.location==="Loading"){
+    
+                x.location =
+                    await getLocation(
+                        x.ip
+                    );
             }
         })
     );
@@ -2988,15 +2991,17 @@ async function loadData(){
     // =========================
     // 📊 UPDATE STATS
     // =========================
-    document.getElementById("total").innerText = d.length;
+    document.getElementById("total").innerText = globalData.length;
     
-    let attack = d.filter(x => x.status === "ATTACK").length;
+    let attack = globalData.filter(x => x.status === "ATTACK").length;
     document.getElementById("attacks").innerText = attack;
 
     // =========================
     // 🔐 SECURITY SCORE
     // =========================
-    let securityScore = 1 - (attack / d.length);
+    let securityScore = d.length
+    ? 1 - (attack / d.length)
+    : 1;
     let percent = Math.round(securityScore * 100);
 
     let bar = document.getElementById("securityBar");
@@ -3010,7 +3015,7 @@ async function loadData(){
     // =========================
     let logs = document.getElementById("logs");
     if (logs) {
-        logs.innerHTML = d.slice(-5).map(x =>
+        logs.innerHTML = globalData.slice(-5).map(x =>
             `${escapeHTML(x.time)} - ${escapeHTML(x.status)}`
         ).join("<br>");
     }
@@ -3019,7 +3024,7 @@ async function loadData(){
     // 🧠 ATTACK SUMMARY
     // =========================
     let counts = {};
-    d.forEach(x => {
+    globalData.forEach(x => {
         let type = x.attack_type || x.status;
         counts[type] = (counts[type] || 0) + 1;
     });
@@ -3041,16 +3046,24 @@ async function loadData(){
     let summaryDiv = document.getElementById("attackSummary");
     if (summaryDiv) summaryDiv.innerHTML = summaryHTML;
 
-    // =========================
+   // =========================
     // 📋 RENDER TABLE
     // =========================
     renderTable();
-
+    
     // =========================
     // 📊 UPDATE GRAPH
     // =========================
     loadGraph();
+    
+    loadTrafficGraph();
+    
+    // =========================
+    // 📈 UPDATE STATS
+    // =========================
     updateStats(globalData);
+    
+    loadMetrics();
 }
 
     
