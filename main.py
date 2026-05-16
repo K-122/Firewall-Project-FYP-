@@ -109,7 +109,7 @@ SECRET_KEY = os.getenv(
 
 ALGORITHM = "HS256"
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 43200
 
 # =========================
 # USERS + ROLES
@@ -195,16 +195,12 @@ def create_access_token(
 
     expire = datetime.utcnow() + (
 
-        expires_delta
+    expires_delta
 
-        if expires_delta
+    if expires_delta
 
-        else timedelta(
-            minutes=
-                ACCESS_TOKEN_EXPIRE_MINUTES
-        )
-    )
-
+    else timedelta(days=30)
+)
     to_encode.update({
         "exp": expire
     })
@@ -1016,31 +1012,26 @@ async def push_log(
 # WEBSOCKET
 # =========================
 @app.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket
-):
+async def websocket_endpoint(websocket: WebSocket):
 
-    token = websocket.query_params.get(
-        "token"
-    )
+    token = websocket.query_params.get("token")
 
     if not token:
-
-        await websocket.close(
-            code=1008
-        )
-
+        await websocket.close(code=1008)
         return
 
     try:
-
         jwt.decode(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
 
-    except:
+    except Exception as e:
+
+        logger.error(
+            f"WebSocket JWT error: {e}"
+        )
 
         await websocket.close(
             code=1008
@@ -1050,9 +1041,7 @@ async def websocket_endpoint(
 
     await websocket.accept()
 
-    active_connections.append(
-        websocket
-    )
+    active_connections.append(websocket)
 
     logger.info(
         "✅ WebSocket connected"
@@ -1061,7 +1050,6 @@ async def websocket_endpoint(
     try:
 
         while True:
-
             await websocket.receive_text()
 
     except WebSocketDisconnect:
@@ -1073,10 +1061,7 @@ async def websocket_endpoint(
     finally:
 
         if websocket in active_connections:
-
-            active_connections.remove(
-                websocket
-            )
+            active_connections.remove(websocket)
 
 # =========================
 # BROADCAST
