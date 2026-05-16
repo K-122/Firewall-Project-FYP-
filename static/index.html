@@ -2539,82 +2539,62 @@ async function handleBlockClick() {
     await loadBlocked();
 }
     
-async function blockIP(ip) {
+async function blockIP(ip){
 
-    try {
+    try{
 
         let res = await fetch(
             `/block/${encodeURIComponent(ip)}`,
             {
-                method: "POST",
-                headers: {
+                method:"POST",
+                headers:{
                     "Authorization":
                     `Bearer ${localStorage.getItem("token")}`
                 }
             }
         );
 
-        // 🔥 Read backend response
-        let data = await res.json();
+        let data =
+            await res.json();
 
-        if (!res.ok) {
+        if(!res.ok){
+
             throw new Error(
-                data.detail || "Failed"
+                data.detail ||
+                "Failed"
             );
         }
 
-        // 🔥 Update local blocked array
-        if (!blockedIPs.includes(ip)) {
+        if(
+            !blockedIPs.includes(ip)
+        ){
+
             blockedIPs.push(ip);
         }
 
-        alert("🚫 Blocked: " + ip);
+        // OPEN POPUP
+        document
+        .getElementById(
+            "blockedModal"
+        )
+        .classList.remove(
+            "hidden"
+        );
 
-        // 🔥 Open popup
-        let modal =
-            document.getElementById(
-                "blockedModal"
-            );
-
-        if (
-            modal &&
-            modal.classList.contains(
-                "hidden"
-            )
-        ) {
-
-            modal.classList.remove(
-                "hidden"
-            );
-        }
-
-        // 🔥 Refresh blocked list
         await loadBlocked();
 
-        // 🔥 Refresh incident panel
-        if (
-            document.getElementById(
-                "blockedPanel"
-            )
-        ) {
+        await loadBlockedInline();
 
-            await loadBlockedInline();
-        }
-
-        // 🔥 Refresh table
         renderTable();
 
-    } catch(e){
+    }catch(e){
 
-    console.error(
-        "BLOCK ERROR:",
-        e
-    );
+        console.error(e);
 
-    alert(
-        "❌ Network / backend error"
-    );
-}
+        alert(
+            "❌ " + e.message
+        );
+    }
 }
 
 async function allowIP(ip){
@@ -2632,13 +2612,31 @@ async function allowIP(ip){
             }
         );
 
+        let data =
+            await res.json();
+
         if(!res.ok){
-            throw new Error("Allow failed");
+
+            throw new Error(
+                data.detail ||
+                "Allow failed"
+            );
         }
 
-        alert("✅ Allowed: " + ip);
+        // remove local cache
+        blockedIPs =
+        blockedIPs.filter(
+            x => x !== ip
+        );
+
+        alert(
+            "✅ Allowed: " + ip
+        );
 
         await loadBlocked();
+
+        await loadBlockedInline();
+
         renderTable();
 
     }catch(e){
@@ -2646,7 +2644,7 @@ async function allowIP(ip){
         console.error(e);
 
         alert(
-            "❌ Failed: " + e.message
+            "❌ " + e.message
         );
     }
 }
@@ -3239,78 +3237,102 @@ style="cursor:pointer;">
    updateStats(globalData);
 }
     
-function renderTable(){
+function renderTable() {
 
-    let html="";
-    let attack=0;
+    let html = "";
+    let attack = 0;
 
-    let role=
-        localStorage.getItem(
-            "role"
-        );
+    let role =
+        localStorage.getItem("role");
 
-    let showActions=
-        role==="superadmin";
+    let showActions =
+        role === "superadmin";
 
     globalData
-    .slice(0,15)
+    .slice(0,100)
     .forEach(x=>{
 
-        let score=
-            Number(
-                x.score || 0
-            );
+        if(x.status==="ATTACK"){
+            attack++;
+        }
 
-        html +=`
+        let score =
+            Number(x.score || 0);
 
-        <tr onclick="
-            selectIncident(
-            '${x.ip}',
+        if(isNaN(score)){
+            score = 0;
+        }
+
+        html += `
+
+        <tr style="cursor:pointer"
+        onclick='selectIncident(
+            ${JSON.stringify(x.ip)},
             ${score},
-            '${x.status}'
-        )">
+            ${JSON.stringify(x.status)}
+        )'>
 
-        <td>${x.time}</td>
+            <td>${escapeHTML(x.time)}</td>
 
-        <td>${x.ip}</td>
+            <td>${escapeHTML(x.ip)}</td>
 
-        <td>${x.location}</td>
+            <td>
+                ${escapeHTML(
+                    x.location || "Unknown"
+                )}
+            </td>
 
-        <td class="${x.status}">
-            ${x.status}
-        </td>
+            <td class="${
+                escapeHTML(
+                    x.status
+                )
+            }">
+                ${escapeHTML(
+                    x.status
+                )}
+            </td>
 
-        <td>
-            ${score.toFixed(3)}
-        </td>
+            <td>
+                ${score.toFixed(3)}
+            </td>
 
-        ${showActions ? `
+            ${showActions ? `
 
-        <td class="action-cell">
+            <td>
 
-        <button
-        class="btn stop"
+                <div class="action-cell">
 
-        onclick="
-        event.stopPropagation();
-        blockIP('${x.ip}')
-        ">
-        Deny
-        </button>
+                    <button
+                    type="button"
+                    class="btn stop"
 
-        <button
-        class="btn start"
+                    onclick="
+                    event.stopPropagation();
+                    blockIP(${JSON.stringify(x.ip)})
+                    ">
 
-        onclick="
-        event.stopPropagation();
-        allowIP('${x.ip}')
-        ">
-        Allow
-        </button>
+                    Deny
 
-        </td>
+                    </button>
 
-        ` : ""}
+                    <button
+                    type="button"
+                    class="btn start"
+
+                    onclick="
+                    event.stopPropagation();
+                    allowIP(${JSON.stringify(x.ip)})
+                    ">
+
+                    Allow
+
+                    </button>
+
+                </div>
+
+            </td>
+
+            ` : ""}
 
         </tr>
         `;
@@ -3318,7 +3340,17 @@ function renderTable(){
 
     document.getElementById(
         "table"
-    ).innerHTML=html;
+    ).innerHTML = html;
+
+    document.getElementById(
+        "total"
+    ).innerText =
+        globalData.length;
+
+    document.getElementById(
+        "attacks"
+    ).innerText =
+        attack;
 }
     
 // ALERTS
