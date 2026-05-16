@@ -289,22 +289,29 @@ DROPDOWN
 .stop { background:#ef4444; color:white; }
 
 /* ACTION BUTTON */
+/* Action column */
 th:nth-child(6),
 td:nth-child(6){
+    width:140px;
     text-align:center;
     vertical-align:middle;
 }
-    
+
+/* keep buttons fixed in center */
 .action-cell{
     display:flex;
     justify-content:center;
     align-items:center;
     gap:10px;
-    width:100%;
+    width:130px;
+    margin:auto;
+    flex-wrap:nowrap;
 }
 
+/* same button size always */
 .action-cell button{
-    min-width:55px;
+    width:55px;
+    flex-shrink:0;
 }
  
     
@@ -2539,14 +2546,9 @@ async function handleBlockClick() {
     
 async function blockIP(ip){
 
-    let buttons =
-        document.querySelectorAll(
-            ".action-cell button"
-        );
+    let button = event.target;
 
-    buttons.forEach(
-        b => b.disabled = true
-    );
+    button.disabled = true;
 
     try{
 
@@ -2562,10 +2564,22 @@ async function blockIP(ip){
         );
 
         if(!res.ok){
-            throw new Error();
+            throw new Error(
+                "Block failed"
+            );
         }
 
+        // refresh blocked data
         await loadBlocked();
+
+        // show blocked modal
+        document
+            .getElementById(
+                "blockedModal"
+            )
+            .classList.remove(
+                "hidden"
+            );
 
     }catch(e){
 
@@ -2573,25 +2587,16 @@ async function blockIP(ip){
 
     }finally{
 
-        buttons.forEach(
-            b => b.disabled=false
-        );
-
-       loadBlocked();
+        button.disabled = false;
     }
 }
 
 async function allowIP(ip){
 
-    let buttons =
-        document.querySelectorAll(
-            ".action-cell button"
-        );
+    let button =
+        event.target;
 
-    // disable buttons temporarily
-    buttons.forEach(
-        b => b.disabled = true
-    );
+    button.disabled = true;
 
     try{
 
@@ -2607,28 +2612,23 @@ async function allowIP(ip){
         );
 
         if(!res.ok){
-
             throw new Error(
                 "Allow failed"
             );
         }
 
-        // refresh blocked list
         await loadBlocked();
 
     }catch(e){
 
         console.error(
-            "ALLOW ERROR:",
             e
         );
 
     }finally{
 
-        // re-enable buttons
-        buttons.forEach(
-            b => b.disabled = false
-        );
+        button.disabled = false;
+
     }
 }
     
