@@ -2492,40 +2492,50 @@ async function handleBlockClick() {
     await loadBlocked();
 }
     
-async function blockIP(ip) {
+async function blockIP(ip){
 
-    if (!ip) {
-        alert("⚠ No IP provided");
-        return;
-    }
+    try{
 
-    try {
         let res = await fetch(
             `/block/${encodeURIComponent(ip)}`,
             {
-                method: "POST",
-                headers: {
+                method:"POST",
+                headers:{
                     "Authorization":
-                        `Bearer ${localStorage.getItem("token")}`
+                    `Bearer ${localStorage.getItem("token")}`
                 }
             }
         );
 
-        if (!res.ok) throw new Error("Block failed");
+        let data = await res.json();
+
+        if(!res.ok){
+
+            throw new Error(
+                data.detail ||
+                "Block failed"
+            );
+        }
 
         alert("🚫 Blocked: " + ip);
+
         await loadBlocked();
+
         renderTable();
 
-    } catch(e) {
+    }catch(e){
+
         console.error(e);
-        alert("❌ Failed to block: " + ip);
+
+        alert(
+            "❌ " + e.message
+        );
     }
 }
 
-// =========================
-// ALLOW IP - SIMPLE & RELIABLE
-// =========================
+// =============
+// ALLOW IP 
+// =============
 async function allowIP(ip) {
 
     if (!ip) {
@@ -2534,6 +2544,7 @@ async function allowIP(ip) {
     }
 
     try {
+
         let res = await fetch(
             `/allow/${encodeURIComponent(ip)}`,
             {
@@ -2545,15 +2556,30 @@ async function allowIP(ip) {
             }
         );
 
-        if (!res.ok) throw new Error("Allow failed");
+        let data = await res.json();
+
+        if (!res.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Allow failed"
+            );
+        }
 
         alert("✅ Allowed: " + ip);
+
         await loadBlocked();
+
         renderTable();
 
-    } catch(e) {
+    }
+    catch(e) {
+
         console.error(e);
-        alert("❌ Failed to allow: " + ip);
+
+        alert(
+            "❌ " + e.message
+        );
     }
 }
 
@@ -3047,9 +3073,6 @@ function renderTable() {
         let score = Number(x.score || 0);
         if (isNaN(score)) score = 0;
 
-        // Safely encode IP for onclick
-        let safeIP = JSON.stringify(x.ip);
-
         html += `
         <tr style="cursor:pointer"
             onclick='selectIncident(${safeIP}, ${score}, ${JSON.stringify(x.status)})'>
@@ -3067,13 +3090,13 @@ function renderTable() {
                         <button 
                             type="button" 
                             class="btn stop"
-                            onclick="blockIP(${safeIP})">
+                            onclick="blockIP('${x.ip}')">
                             Deny
                         </button>
                         <button 
                             type="button" 
                             class="btn start"
-                            onclick="allowIP(${safeIP})">
+                            onclick="allowIP(${x.ip})">
                             Allow
                         </button>
                     </div>
@@ -3247,11 +3270,15 @@ async function loadIncidentsPage() {
     timeline.innerHTML = html;
     
     // 🧠 AUTO SELECT (ONLY FIRST TIME)
+   // 🧠 AUTO SELECT ONLY IF USER HAS NOT SELECTED ANYTHING
+if (!selectedIP) {
+
     selectIncident(
-    latest.ip,
-    latest.score,
-    latest.status
-);
+        latest.ip,
+        latest.score,
+        latest.status
+    );
+}
 }
 
     
