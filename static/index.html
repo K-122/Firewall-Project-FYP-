@@ -3230,74 +3230,102 @@ style="cursor:pointer;">
 function renderTable() {
 
     let html = "";
-
     let attack = 0;
-
-    // 🔐 ROLE CHECK
     let role =
-        localStorage.getItem("role");
+        localStorage.getItem(
+            "role"
+        );
 
     let showActions =
         role === "superadmin";
+    globalData
+    .slice(0,15)
+    .forEach(x => {
 
-    globalData.slice(0, 15).forEach(x => {
-
-        if (x.status === "ATTACK") {
+        if (
+            x.status === "ATTACK"
+        ){
             attack++;
         }
 
-        // SAFE SCORE
         let score =
-            Number(x.score || 0);
+            Number(
+                x.score || 0
+            );
+
+        if(isNaN(score)){
+            score = 0;
+        }
 
         html += `
-        <tr>
-
-            <td>${escapeHTML(x.time)}</td>
-
-            <td>${escapeHTML(x.ip)}</td>
+        <tr onclick='selectIncident(
+            ${JSON.stringify(x.ip)},
+            ${score},
+            ${JSON.stringify(x.status)}
+        )'
+        style="cursor:pointer">
 
             <td>
-            ${escapeHTML(x.location || "Loading")}
+                ${escapeHTML(x.time)}
             </td>
 
-            <td class="${escapeHTML(x.status)}">
-                ${escapeHTML(x.status)}
+            <td>
+                ${escapeHTML(x.ip)}
             </td>
 
+            <td>
+                ${escapeHTML(
+                    x.location || "Loading"
+                )}
+            </td>
+
+            <td class="${
+                escapeHTML(
+                    x.status
+                )
+            }">
+                ${escapeHTML(
+                    x.status
+                )}
+
+            </td>
             <td>
                 ${score.toFixed(3)}
             </td>
-
             ${showActions ? `
+            <td class="action-cell">
 
-        <td class="action-cell">
-        
-            <button onclick='blockIP(${JSON.stringify(x.ip)})'
+                <button
+                    onclick='event.stopPropagation();
+                    blockIP(${JSON.stringify(x.ip)})'
                     class="btn stop">
-                Deny
-            </button>
-        
-            <button onclick='allowIP(${JSON.stringify(x.ip)})'
-                    class="btn start">
-                Allow
-            </button>
-        
-        </td>
-        
-        ` : ``}
+                    Deny
+                </button>
 
+                <button
+                    onclick='event.stopPropagation();
+                    allowIP(${JSON.stringify(x.ip)})'
+                    class="btn start">
+                    Allow
+                </button>
+            </td>
+            ` : ""}
         </tr>
         `;
     });
 
-    document.getElementById("table").innerHTML =
-        html;
+    document.getElementById(
+        "table"
+    ).innerHTML = html;
 
-    document.getElementById("total").innerText =
+    document.getElementById(
+        "total"
+    ).innerText =
         globalData.length;
 
-    document.getElementById("attacks").innerText =
+    document.getElementById(
+        "attacks"
+    ).innerText =
         attack;
 }
     
