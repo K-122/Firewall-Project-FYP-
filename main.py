@@ -279,33 +279,6 @@ def block_ip(ip):
 
         addr = ipaddress.ip_address(ip)
 
-        # Ignore private network IP
-        if addr.is_private:
-
-            logger.warning(
-                f"⚠ Cannot block private IP: {ip}"
-            )
-
-            return False
-
-        # Ignore multicast IP
-        if addr.is_multicast:
-
-            logger.warning(
-                f"⚠ Cannot block multicast IP: {ip}"
-            )
-
-            return False
-
-        # Ignore localhost
-        if addr.is_loopback:
-
-            logger.warning(
-                f"⚠ Cannot block loopback IP: {ip}"
-            )
-
-            return False
-
     except Exception:
 
         logger.error(
@@ -327,7 +300,6 @@ def block_ip(ip):
 
         blocked_ips.add(ip)
 
-        # update records
         for r in data_store:
 
             if r["ip"] == ip:
@@ -336,11 +308,16 @@ def block_ip(ip):
                 r["status"] = "BLOCKED"
 
     logger.warning(
-        f"🚨 Blocking IP: {ip}"
+        f"🚨 Added to block list: {ip}"
     )
 
-    # Real firewall rules (local machine only)
-    if os.getenv("ENVIRONMENT") != "railway":
+    # Only apply real firewall rules for public IPs
+    if (
+        not addr.is_private
+        and not addr.is_multicast
+        and not addr.is_loopback
+        and os.getenv("ENVIRONMENT") != "railway"
+    ):
 
         threading.Thread(
 
