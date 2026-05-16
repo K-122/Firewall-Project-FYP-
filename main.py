@@ -70,7 +70,7 @@ data_store = []
 
 attack_counter = {}
 
-blocked_ips = set()
+blocked_ips = []
 
 sequence_buffer = []
 
@@ -275,69 +275,32 @@ def verify_token(
 # =========================
 def block_ip(ip):
 
-    try:
-
-        addr = ipaddress.ip_address(ip)
-
-    except Exception:
-
-        logger.error(
-            f"❌ Invalid IP: {ip}"
-        )
-
-        return False
-
     with data_lock:
 
-        # already blocked
-        if ip in blocked_ips:
+        for item in blocked_ips:
 
-            logger.info(
-                f"ℹ IP already blocked: {ip}"
-            )
+            if item["ip"] == ip:
+                return True
 
-            return True
-
-        blocked_ips.add(ip)
+        location = "Unknown"
 
         for r in data_store:
 
             if r["ip"] == ip:
 
+                location = r.get(
+                    "location",
+                    "Unknown"
+                )
+
                 r["blocked"] = True
                 r["status"] = "BLOCKED"
 
-    logger.warning(
-        f"🚨 Added to block list: {ip}"
-    )
+        blocked_ips.append({
 
-    # Only apply real firewall rules for public IPs
-    if (
-        not addr.is_private
-        and not addr.is_multicast
-        and not addr.is_loopback
-        and os.getenv("ENVIRONMENT") != "railway"
-    ):
-
-        threading.Thread(
-
-            target=lambda: subprocess.run(
-                [
-                    "sudo",
-                    "iptables",
-                    "-A",
-                    "INPUT",
-                    "-s",
-                    ip,
-                    "-j",
-                    "DROP"
-                ],
-                timeout=3
-            ),
-
-            daemon=True
-
-        ).start()
+            "ip": ip,
+            "location": location
+        })
 
     return True
 
@@ -749,7 +712,7 @@ def get_blocked(
     Depends(verify_token)
 ):
 
-    return list(blocked_ips)
+    return blocked_ips
 
 @app.get("/incidents")
 def get_incidents(
