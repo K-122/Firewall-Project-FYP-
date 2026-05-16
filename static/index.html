@@ -2521,11 +2521,6 @@ async function handleBlockClick() {
     
 async function blockIP(ip) {
 
-    if (!systemActive) {
-        alert("⚠ System is stopped");
-        return;
-    }
-
     try {
 
         let res = await fetch(
@@ -2599,33 +2594,41 @@ async function blockIP(ip) {
     }
 }
 
-async function allowIP(ip) {
+async function allowIP(ip){
 
-    if (!systemActive) {
-        alert("⚠ System is stopped");
-        return;
+    try{
+
+        let res = await fetch(
+            `/allow/${encodeURIComponent(ip)}`,
+            {
+                method:"POST",
+                headers:{
+                    "Authorization":
+                    `Bearer ${localStorage.getItem("token")}`
+                }
+            }
+        );
+
+        if(!res.ok){
+            throw new Error("Allow failed");
+        }
+
+        alert("✅ Allowed: " + ip);
+
+        await loadBlocked();
+        renderTable();
+
+    }catch(e){
+
+        console.error(e);
+
+        alert(
+            "❌ Failed: " + e.message
+        );
     }
-
-    await fetch(`/allow/${encodeURIComponent(ip)}`, {
-    method: "POST",
-    headers: {
-        "Authorization":
-            `Bearer ${localStorage.getItem("token")}`
-    }
-});
-
-    alert("✅ Allowed: " + ip);
-
-    // 🔥 refresh blocked list (in case removed)
-    loadBlocked();
 }
     
 async function quarantineIP(ip) {
-
-    if (!systemActive) {
-        alert("⚠ System is stopped");
-        return;
-    }
 
     await fetch(`/quarantine/${encodeURIComponent(ip)}`, {
     method: "POST",
@@ -3062,15 +3065,12 @@ async function loadData(){
             (counts[type] || 0) + 1;
 
         // SAFE SCORE
-        let score = 0;
-
-        if (x.score !== undefined) {
-
-            score = Number(x.score);
-
-        } else if (x.score !== undefined) {
-
-            score = Number(x.score);
+        // SAFE SCORE
+        let score = Number(x.score || 0);
+        
+        // prevent NaN
+        if (isNaN(score)) {
+            score = 0;
         }
 
         html += `
@@ -3095,22 +3095,14 @@ async function loadData(){
 
             <td class="action-cell">
             
-                <button onclick="
-                    blockIP('${escapeHTML(x.ip)}')
-                "
+               <button onclick='blockIP(${JSON.stringify(x.ip)})'
                 class="btn stop">
-            
-                    Deny
-            
-                </button>
-            
-                <button onclick="
-                    allowIP('${escapeHTML(x.ip)}')
-                "
-                class="btn start">
-
-                Allow
-
+                Deny
+            </button>
+        
+        <button onclick='allowIP(${JSON.stringify(x.ip)})'
+          class="btn start">
+            Allow
         </button>
 
     </td>
@@ -3276,12 +3268,12 @@ function renderTable() {
 
         <td class="action-cell">
         
-            <button onclick="blockIP('${escapeHTML(x.ip)}')"
+            <button onclick='blockIP(${JSON.stringify(x.ip)})'
                     class="btn stop">
                 Deny
             </button>
         
-            <button onclick="allowIP('${escapeHTML(x.ip)}')"
+            <button onclick='allowIP(${JSON.stringify(x.ip)})'
                     class="btn start">
                 Allow
             </button>
@@ -3459,38 +3451,56 @@ async function loadIncidentsPage() {
 async function loadBlocked() {
 
     try {
-       let res = await fetch("/blocked", {
-    headers: {
-        "Authorization":
-            `Bearer ${localStorage.getItem("token")}`
-    }
-});
+
+        let res = await fetch(
+            "/blocked",
+            {
+                headers:{
+                    "Authorization":
+                    `Bearer ${localStorage.getItem("token")}`
+                }
+            }
+        );
+
         let data = await res.json();
 
-        let box = document.getElementById("blockedList");
+        let box =
+            document.getElementById(
+                "blockedList"
+            );
+
         if (!box) return;
 
-       let html = "";
+        let html = "";
 
-        data.forEach((ip, i) => {
-        
+        data.forEach(item => {
+
             html += `
-                <div class="blocked-item">
-                    <span>${escapeHTML(ip)}</span>
-        
-                    <span style="color:#94a3b8;">
-                        [${locations[i]}]
-                    </span>
-                </div>
+            <div class="blocked-item">
+
+                <span>
+                    ${escapeHTML(item.ip)}
+                </span>
+
+                <span style="
+                    color:#94a3b8;
+                ">
+                    [${escapeHTML(
+                        item.location
+                    )}]
+                </span>
+
+            </div>
             `;
         });
-        
+
         box.innerHTML = html;
-        
-            } catch (err) {
-                console.error(err);
-            }
-        }
+
+    } catch(err){
+
+        console.error(err);
+    }
+}
 
 function closeBlocked(){
     let modal = document.getElementById("blockedModal");
@@ -3504,37 +3514,63 @@ function closeBlockedInline(){
 
 async function loadBlockedInline(){
 
-    document.getElementById("blockedPanel").classList.remove("hidden");
-
-    try {
-        let res = await fetch("/blocked", {
-    headers: {
-        "Authorization":
-            `Bearer ${localStorage.getItem("token")}`
-    }
-});
-        let data = await res.json();
-
-        let box = document.getElementById("blockedListInline");
-        if (!box) return;
-
-        box.innerHTML = "";
-
-        let locations = await Promise.all(
-            data.map(ip => getLocation(ip).catch(() => "Unknown"))
+    document
+        .getElementById(
+            "blockedPanel"
+        )
+        .classList.remove(
+            "hidden"
         );
 
-        data.forEach((ip, i) => {
-            box.innerHTML += `
-                <div class="blocked-item">
-                    <span>${escapeHTML(ip)}</span>
-                    <span style="color:#94a3b8;">[${locations[i]}]</span>
-                </div>
+    try{
+
+        let res = await fetch(
+            "/blocked",
+            {
+                headers:{
+                    "Authorization":
+                    `Bearer ${localStorage.getItem("token")}`
+                }
+            }
+        );
+
+        let data =
+            await res.json();
+
+        let box =
+            document.getElementById(
+                "blockedListInline"
+            );
+
+        if(!box) return;
+
+        let html = "";
+
+        data.forEach(item=>{
+
+            html += `
+            <div class="blocked-item">
+
+                <span>
+                    ${escapeHTML(item.ip)}
+                </span>
+
+                <span
+                    style="color:#94a3b8"
+                >
+                    [${escapeHTML(item.location)}]
+                </span>
+
+            </div>
             `;
         });
 
-    } catch (err) {
-        console.error(err);
+        box.innerHTML = html;
+
+    }
+    catch(e){
+
+        console.error(e);
     }
 }
 
