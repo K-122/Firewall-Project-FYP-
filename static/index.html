@@ -310,7 +310,9 @@ td:nth-child(6){
 
 /* same button size always */
 .action-cell button{
-    width:55px;
+    min-width:70px;
+    width:auto;
+    padding:6px 12px;
     flex-shrink:0;
 }
  
@@ -2481,18 +2483,23 @@ function selectIncident(ip, score, status){
     `;
 }
 
-async function handleBlockClick() {
+async function handleBlockClick(){
 
-    let ip = document.getElementById("incidentIP").innerText.trim();
+    if(!selectedIP){
 
-    if (!ip || ip === "-") {
-        alert("⚠ Select an incident first");
+        alert(
+            "⚠ Select an incident first"
+        );
+
         return;
     }
 
-    await blockIP(ip);
+    await blockIP(selectedIP);
 
-    document.getElementById("blockedModal").classList.remove("hidden");
+    document
+        .getElementById("blockedModal")
+        .classList.remove("hidden");
+
     await loadBlocked();
 }
     
@@ -2544,6 +2551,16 @@ async function blockIP(ip){
     systemActive = oldState;
 }
 
+async function blockAndShow(ip){
+
+    await blockIP(ip);
+
+    document
+        .getElementById("blockedModal")
+        .classList.remove("hidden");
+
+    await loadBlocked();
+}
 
 async function allowIP(ip){
 
@@ -3133,23 +3150,23 @@ function renderTable() {
 
                 ${showActions ? `
 
-                <div class="action-cell">
+            <div class="action-cell">
 
-                    <button
-                        type="button"
-                        class="btn stop"
-                        onclick='blockIP(${JSON.stringify(x.ip)})'
-                        Deny
-                    </button>
-
-                    <button
-                        type="button"
-                        class="btn start"
-                        onclick='allowIP(${JSON.stringify(x.ip)})'
-                        Allow
-                    </button>
-
-                </div>
+            <button
+                type="button"
+                class="btn stop"
+                onclick='blockAndShow(${JSON.stringify(x.ip)})'>
+                Deny
+            </button>
+            
+            <button
+                type="button"
+                class="btn start"
+                onclick='allowIP(${JSON.stringify(x.ip)})'>
+                Allow
+            </button>
+            
+            </div>
 
                 ` : ""}
 
