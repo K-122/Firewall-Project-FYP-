@@ -1,12 +1,9 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta charset="UTF-8">
 <title>AI Firewall Dashboard</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
 body {
     margin: 0;
@@ -292,11 +289,23 @@ DROPDOWN
 .stop { background:#ef4444; color:white; }
 
 /* ACTION BUTTON */
-.action-cell {
-    display: flex;
-    justify-content: center;   
-    align-items: center;
-    gap: 5px;                 
+th:nth-child(6),
+td:nth-child(6){
+
+    text-align:center;
+    vertical-align:middle;
+}
+
+.action-cell{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    width:100%;
+}
+
+.action-cell button{
+    min-width:55px;
 }
  
     
@@ -2595,14 +2604,17 @@ async function blockIP(ip) {
         // 🔥 Refresh table
         renderTable();
 
-    } catch (e) {
+    } catch(e){
 
-        console.error(e);
+    console.error(
+        "BLOCK ERROR:",
+        e
+    );
 
-        alert(
-            "❌ Failed: " + e.message
-        );
-    }
+    alert(
+        "❌ Network / backend error"
+    );
+}
 }
 
 async function allowIP(ip){
@@ -3227,106 +3239,86 @@ style="cursor:pointer;">
    updateStats(globalData);
 }
     
-function renderTable() {
+function renderTable(){
 
-    let html = "";
-    let attack = 0;
-    let role =
+    let html="";
+    let attack=0;
+
+    let role=
         localStorage.getItem(
             "role"
         );
 
-    let showActions =
-        role === "superadmin";
+    let showActions=
+        role==="superadmin";
+
     globalData
     .slice(0,15)
-    .forEach(x => {
+    .forEach(x=>{
 
-        if (
-            x.status === "ATTACK"
-        ){
-            attack++;
-        }
-
-        let score =
+        let score=
             Number(
                 x.score || 0
             );
 
-        if(isNaN(score)){
-            score = 0;
-        }
+        html +=`
 
-        html += `
-        <tr onclick='selectIncident(
-            ${JSON.stringify(x.ip)},
+        <tr onclick="
+            selectIncident(
+            '${x.ip}',
             ${score},
-            ${JSON.stringify(x.status)}
-        )'
-        style="cursor:pointer">
+            '${x.status}'
+        )">
 
-            <td>
-                ${escapeHTML(x.time)}
-            </td>
+        <td>${x.time}</td>
 
-            <td>
-                ${escapeHTML(x.ip)}
-            </td>
+        <td>${x.ip}</td>
 
-            <td>
-                ${escapeHTML(
-                    x.location || "Loading"
-                )}
-            </td>
+        <td>${x.location}</td>
 
-            <td class="${
-                escapeHTML(
-                    x.status
-                )
-            }">
-                ${escapeHTML(
-                    x.status
-                )}
+        <td class="${x.status}">
+            ${x.status}
+        </td>
 
-            </td>
-            <td>
-                ${score.toFixed(3)}
-            </td>
-            ${showActions ? `
-            <td class="action-cell">
+        <td>
+            ${score.toFixed(3)}
+        </td>
 
-                <button
-                    onclick='event.stopPropagation();
-                    blockIP(${JSON.stringify(x.ip)})'
-                    class="btn stop">
-                    Deny
-                </button>
+        ${showActions ? `
 
-                <button
-                    onclick='event.stopPropagation();
-                    allowIP(${JSON.stringify(x.ip)})'
-                    class="btn start">
-                    Allow
-                </button>
-            </td>
-            ` : ""}
+        <td class="action-cell">
+
+        <button
+        class="btn stop"
+
+        onclick="
+        event.stopPropagation();
+        blockIP('${x.ip}')
+        ">
+        Deny
+        </button>
+
+        <button
+        class="btn start"
+
+        onclick="
+        event.stopPropagation();
+        allowIP('${x.ip}')
+        ">
+        Allow
+        </button>
+
+        </td>
+
+        ` : ""}
+
         </tr>
         `;
     });
 
     document.getElementById(
         "table"
-    ).innerHTML = html;
-
-    document.getElementById(
-        "total"
-    ).innerText =
-        globalData.length;
-
-    document.getElementById(
-        "attacks"
-    ).innerText =
-        attack;
+    ).innerHTML=html;
 }
     
 // ALERTS
