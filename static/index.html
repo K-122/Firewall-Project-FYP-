@@ -1017,7 +1017,6 @@ td button:last-child {
 </div>
 
 <!-- TRAFFIC -->
-
 <div id="traffic" class="page hidden">
 
 <h2>📡 Traffic Analysis</h2>
@@ -1033,21 +1032,20 @@ td button:last-child {
         <h3>📋 Live Traffic Logs</h3>
 
         <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Time</th>
-                        <th>IP</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                        <th>Score</th>
-                        <th id="actionHeader">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="table"></tbody>
-            </table>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>IP</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Score</th>
+                    <th id="actionHeader">Action</th>  <!-- ✅ ALWAYS RENDER -->
+                </tr>
+            </thead>
+            <tbody id="table"></tbody>
+        </table>
         </div>
-
     </div>
 
     <!-- RIGHT: GRAPH -->
@@ -1679,67 +1677,35 @@ async function switchAccount() {
 // =========================
 function applyRolePermissions() {
 
-    let role =
-        localStorage.getItem(
-            "role"
-        );
+    let role = localStorage.getItem("role");
 
-    // =========================
-    // ACTION HEADER
-    // =========================
-    let actionHeader =
-        document.getElementById(
-            "actionHeader"
-        );
+    let actionHeader = document.getElementById("actionHeader");
 
-    // =========================
-    // INCIDENT ACTIONS
-    // =========================
-    let actionCards =
-        document.querySelectorAll(
-            ".action-card"
-        );
+    let actionCards = document.querySelectorAll(".action-card");
 
-    // =========================
-    // FINANCE STAFF
-    // =========================
+    // FINANCE STAFF - HIDE ACTIONS
     if (role === "finance") {
-
-        // hide incident actions
         actionCards.forEach(x => {
-
-            x.style.display =
-                "none";
+            x.style.display = "none";
         });
 
-        // hide table action column
         if (actionHeader) {
-
-            actionHeader.style.display =
-                "none";
+            actionHeader.style.display = "none";  // ✅ HIDES HEADER
         }
     }
 
-    // =========================
-    // SUPERADMIN
-    // =========================
+    // SUPERADMIN - SHOW ACTIONS
     else {
-
-        // show incident actions
         actionCards.forEach(x => {
-
-            x.style.display =
-                "block";
+            x.style.display = "block";
         });
 
-        // show table action column
         if (actionHeader) {
-
-            actionHeader.style.display =
-                "";
+            actionHeader.style.display = "";  // ✅ SHOWS HEADER
         }
     }
 }
+
 
     
 // GRAPH
@@ -2512,165 +2478,85 @@ function selectIncident(ip, score, status){
 }
 
 async function handleBlockClick() {
-    
-    let ip =
-        document.getElementById(
-            "incidentIP"
-        ).innerText.trim();
 
-    // nothing selected
-    if (
-        !ip ||
-        ip === "-"
-    ) {
+    let ip = document.getElementById("incidentIP").innerText.trim();
 
-        alert(
-            "⚠ Select an incident first"
-        );
-
+    if (!ip || ip === "-") {
+        alert("⚠ Select an incident first");
         return;
     }
 
     await blockIP(ip);
 
-    document
-        .getElementById(
-            "blockedModal"
-        )
-        .classList.remove(
-            "hidden"
-        );
-
+    document.getElementById("blockedModal").classList.remove("hidden");
     await loadBlocked();
 }
     
-async function blockIP(eventOrIP, ip=null){
+async function blockIP(ip) {
 
-    let button = null;
-
-    // called from button click:
-    // blockIP(event, ip)
-    if (eventOrIP && eventOrIP.target){
-
-        button = eventOrIP.target;
-
-    } 
-    // called from handleBlockClick():
-    // blockIP(ip)
-    else{
-
-        ip = eventOrIP;
+    if (!ip) {
+        alert("⚠ No IP provided");
+        return;
     }
 
-    if(button){
-        button.disabled=true;
-    }
-
-    try{
-
-        let res=await fetch(
+    try {
+        let res = await fetch(
             `/block/${encodeURIComponent(ip)}`,
             {
-                method:"POST",
-                headers:{
+                method: "POST",
+                headers: {
                     "Authorization":
-                    `Bearer ${localStorage.getItem("token")}`
+                        `Bearer ${localStorage.getItem("token")}`
                 }
             }
         );
 
-        if(!res.ok){
+        if (!res.ok) throw new Error("Block failed");
 
-            throw new Error(
-                "Block failed"
-            );
-        }
-
+        alert("🚫 Blocked: " + ip);
         await loadBlocked();
+        renderTable();
 
-        document
-        .getElementById("blockedModal")
-        .classList.remove("hidden");
-
-        alert("🚫 IP blocked: " + ip);
-
-    }catch(e){
-
+    } catch(e) {
         console.error(e);
-
-        alert("❌ Failed to block IP");
-
-    }finally{
-
-        if(button){
-            button.disabled=false;
-        }
+        alert("❌ Failed to block: " + ip);
     }
 }
 
-async function allowIP(eventOrIP, ip=null){
+// =========================
+// ALLOW IP - SIMPLE & RELIABLE
+// =========================
+async function allowIP(ip) {
 
-    let button = null;
-
-    // called from button:
-    // allowIP(event, ip)
-    if(eventOrIP && eventOrIP.target){
-
-        button = eventOrIP.target;
-
-    }
-    // called directly:
-    // allowIP(ip)
-    else{
-
-        ip = eventOrIP;
+    if (!ip) {
+        alert("⚠ No IP provided");
+        return;
     }
 
-    if(button){
-        button.disabled = true;
-    }
-
-    try{
-
+    try {
         let res = await fetch(
             `/allow/${encodeURIComponent(ip)}`,
             {
-                method:"POST",
-                headers:{
+                method: "POST",
+                headers: {
                     "Authorization":
-                    `Bearer ${localStorage.getItem("token")}`
+                        `Bearer ${localStorage.getItem("token")}`
                 }
             }
         );
 
-        if(!res.ok){
+        if (!res.ok) throw new Error("Allow failed");
 
-            throw new Error(
-                "Allow failed"
-            );
-        }
-
+        alert("✅ Allowed: " + ip);
         await loadBlocked();
+        renderTable();
 
-        alert(
-            "✅ IP allowed: " + ip
-        );
-
-    }catch(e){
-
+    } catch(e) {
         console.error(e);
-
-        alert(
-            "❌ Failed to allow IP"
-        );
-
-    }finally{
-
-        if(button){
-            button.disabled = false;
-        }
+        alert("❌ Failed to allow: " + ip);
     }
 }
+
     
 async function quarantineIP(ip) {
 
@@ -3056,320 +2942,166 @@ async function loadData(){
         logout();
         return;
     }
+    
     let d = await r.json();
     if (!d) return;
+    
     globalData = d.slice(0, 100);
-    let html = "";
-    let attack = 0;
-
-    // =========================
-    // 🔐 ROLE CHECK
-    // =========================
-    let role =
-        localStorage.getItem("role");
-
-    let showActions =
-        role === "superadmin";
-
-    // =========================
-    // 🧠 COUNT TYPES
-    // =========================
-    let counts = {};
 
     // =========================
     // 🌍 GET LOCATIONS
     // =========================
     await Promise.all(
-
-    d.slice(0,15).map(async x => {
-
-        if(
-            !x.location ||
-            x.location === "Loading"
-        ){
-
-            x.location =
-                await getLocation(
-                    x.ip
-                );
-        }
-
-    })
-
+        d.slice(0,15).map(async x => {
+            if(!x.location || x.location === "Loading"){
+                x.location = await getLocation(x.ip);
+            }
+        })
     );
 
     // =========================
-    // 📋 BUILD TABLE
+    // 📊 UPDATE STATS
     // =========================
-    d.slice(0, 15).forEach(x => {
-
-        if (x.status === "ATTACK")
-            attack++;
-
-        let type =
-            x.attack_type || x.status;
-
-        counts[type] =
-            (counts[type] || 0) + 1;
-
-        // SAFE SCORE
-        let score = Number(x.score || 0);
-        
-        // prevent NaN
-        if (isNaN(score)) {
-            score = 0;
-        }
-        
-        html += `
-        <tr onclick='selectIncident(
-    ${JSON.stringify(x.ip)},
-    ${Number(x.score || 0)},
-    ${JSON.stringify(x.status)}
-)'
-style="cursor:pointer;">
-    <td>${escapeHTML(x.time)}</td>
-    <td>${escapeHTML(x.ip)}</td>
-    <td>${escapeHTML(x.location || "Unknown")}</td>
-    <td class="${escapeHTML(x.status)}">
-        ${escapeHTML(x.status)}
-    </td>
-    <td>
-        ${score.toFixed(3)}
-    </td>
-    ${showActions ? `
-    <td class="action-cell"
-    onclick="event.stopPropagation()">
+    document.getElementById("total").innerText = d.length;
     
-    <button
-    type="button"
-    class="btn stop"
-    onclick="blockIP(event, ${JSON.stringify(x.ip)})">
-    Deny
-    </button>
-    
-    <button
-    type="button"
-    class="btn start"
-    onclick="allowIP(event, ${JSON.stringify(x.ip)})">
-    Allow
-    </button>
+    let attack = d.filter(x => x.status === "ATTACK").length;
+    document.getElementById("attacks").innerText = attack;
 
-</td>
-    ` : ``}
-</tr>
+    // =========================
+    // 🔐 SECURITY SCORE
+    // =========================
+    let securityScore = 1 - (attack / d.length);
+    let percent = Math.round(securityScore * 100);
+
+    let bar = document.getElementById("securityBar");
+    let text = document.getElementById("securityText");
+
+    if (bar) bar.style.width = percent + "%";
+    if (text) text.innerText = percent + "% Secure";
+
+    // =========================
+    // 🧾 LOGS
+    // =========================
+    let logs = document.getElementById("logs");
+    if (logs) {
+        logs.innerHTML = d.slice(-5).map(x =>
+            `${escapeHTML(x.time)} - ${escapeHTML(x.status)}`
+        ).join("<br>");
+    }
+
+    // =========================
+    // 🧠 ATTACK SUMMARY
+    // =========================
+    let counts = {};
+    d.forEach(x => {
+        let type = x.attack_type || x.status;
+        counts[type] = (counts[type] || 0) + 1;
+    });
+
+    let summaryHTML = "";
+    let total = d.length || 1;
+    for (let type in counts) {
+        let count = counts[type];
+        let percent = Math.round((count / total) * 100);
+
+        summaryHTML += `
+            <div class="attack-box">
+                <h4>${escapeHTML(type)}</h4>
+                <p>${count} (${percent}%)</p>
+            </div>
         `;
+    }
+
+    let summaryDiv = document.getElementById("attackSummary");
+    if (summaryDiv) summaryDiv.innerHTML = summaryHTML;
+
+    // =========================
+    // 📋 RENDER TABLE
+    // =========================
+    renderTable();
+
+    // =========================
+    // 📊 UPDATE GRAPH
+    // =========================
+    loadGraph();
+    updateStats(globalData);
+}
+
+    
+// ✅ FIXED renderTable()
+function renderTable() {
+
+    let html = "";
+    
+    // =========================
+    // 🔐 ROLE CHECK
+    // =========================
+    let role = localStorage.getItem("role");
+    let showActions = role === "superadmin";
+
+    // =========================
+    // 📋 BUILD TABLE ROWS
+    // =========================
+    globalData.slice(0, 100).forEach(x => {
+
+        let score = Number(x.score || 0);
+        if (isNaN(score)) score = 0;
+
+        // Safely encode IP for onclick
+        let safeIP = JSON.stringify(x.ip);
+
+        html += `
+        <tr style="cursor:pointer"
+            onclick='selectIncident(${safeIP}, ${score}, ${JSON.stringify(x.status)})'>
+
+            <td>${escapeHTML(x.time)}</td>
+            <td>${escapeHTML(x.ip)}</td>
+            <td>${escapeHTML(x.location || "Loading...")}</td>
+            <td class="${escapeHTML(x.status)}">${escapeHTML(x.status)}</td>
+            <td>${score.toFixed(3)}</td>
+
+            <!-- ✅ ALWAYS RENDER ACTION COLUMN -->
+            <td onclick="event.stopPropagation()">
+                ${showActions ? `
+                    <div class="action-cell">
+                        <button 
+                            type="button" 
+                            class="btn stop"
+                            onclick="blockIP(${safeIP})">
+                            Deny
+                        </button>
+                        <button 
+                            type="button" 
+                            class="btn start"
+                            onclick="allowIP(${safeIP})">
+                            Allow
+                        </button>
+                    </div>
+                ` : ''}
+            </td>
+
+        </tr>`;
     });
 
     // =========================
-    // 📋 UPDATE TABLE
+    // ✅ UPDATE TABLE
     // =========================
-    document.getElementById(
-        "table"
-    ).innerHTML = html;
+    document.getElementById("table").innerHTML = html;
 
-    let wrapper =
-        document.querySelector(
-            ".table-wrapper"
-        );
-
+    let wrapper = document.querySelector(".table-wrapper");
     if (wrapper) {
-
         wrapper.scrollTop = 0;
     }
 
     // =========================
     // 📊 UPDATE STATS
     // =========================
-    document.getElementById(
-        "total"
-    ).innerText = d.length;
-
-    document.getElementById(
-        "attacks"
-    ).innerText = attack;
-
-    // =========================
-    // 🔐 SECURITY SCORE
-    // =========================
-    let securityScore =
-        1 - (attack / d.length);
-
-    let percent =
-        Math.round(
-            securityScore * 100
-        );
-
-    let bar =
-        document.getElementById(
-            "securityBar"
-        );
-
-    let text =
-        document.getElementById(
-            "securityText"
-        );
-
-    if (bar)
-        bar.style.width =
-            percent + "%";
-
-    if (text)
-        text.innerText =
-            percent + "% Secure";
-
-    // =========================
-    // 🧾 LOGS
-    // =========================
-    let logs =
-        document.getElementById(
-            "logs"
-        );
-
-    if (logs) {
-        logs.innerHTML =
-            d.slice(-5).map(x =>
-                `${escapeHTML(x.time)} - ${escapeHTML(x.status)}`
-            ).join("<br>");
-    }
-
-    // =========================
-    // 🧠 ATTACK SUMMARY
-    // =========================
-    let summaryHTML = "";
-    let total = d.length || 1;
-    for (let type in counts) {
-        let count = counts[type];
-        let percent =
-            Math.round(
-                (count / total) * 100
-            );
-
-        summaryHTML += `
-            <div class="attack-box">
-                <h4>${escapeHTML(type)}</h4>
-                <p>
-                    ${count} (${percent}%)
-                </p>
-            </div>
-        `;
-    }
-
-    let summaryDiv =
-        document.getElementById(
-            "attackSummary"
-        );
-
-    if (summaryDiv)
-        summaryDiv.innerHTML =
-            summaryHTML;
-
-    // =========================
-    // 📊 UPDATE GRAPH
-    // =========================
-    loadGraph();
-   updateStats(globalData);
-}
+    document.getElementById("total").innerText = globalData.length;
     
-function renderTable() {
-
-    let html = "";
-    let attack = 0;
-
-    let role =
-        localStorage.getItem("role");
-
-    let showActions =
-        role === "superadmin";
-
-    globalData
-    .slice(0,100)
-    .forEach(x=>{
-
-        if(x.status==="ATTACK"){
-            attack++;
-        }
-
-        let score =
-            Number(x.score || 0);
-
-        if(isNaN(score)){
-            score = 0;
-        }
-
-        html += `
-
-        <tr style="cursor:pointer"
-        onclick='selectIncident(
-            ${JSON.stringify(x.ip)},
-            ${score},
-            ${JSON.stringify(x.status)}
-        )'>
-
-            <td>${escapeHTML(x.time)}</td>
-
-            <td>${escapeHTML(x.ip)}</td>
-
-            <td>
-                ${escapeHTML(
-                    x.location || "Unknown"
-                )}
-            </td>
-
-            <td class="${
-                escapeHTML(
-                    x.status
-                )
-            }">
-                ${escapeHTML(
-                    x.status
-                )}
-            </td>
-
-            <td>
-                ${score.toFixed(3)}
-            </td>
-
-            ${showActions ? `
-
-        <td class="action-cell"
-            onclick="event.stopPropagation()">
-        
-            <button
-            type="button"
-            class="btn stop"
-            onclick="blockIP(event, ${JSON.stringify(x.ip)})">
-            Deny
-            </button>
-            
-            <button
-            type="button"
-            class="btn start"
-            onclick="allowIP(event, ${JSON.stringify(x.ip)})">
-            Allow
-            </button>
-        
-        </td>
-
-            ` : ""}
-
-        </tr>
-        `;
-    });
-
-    document.getElementById(
-        "table"
-    ).innerHTML = html;
-
-    document.getElementById(
-        "total"
-    ).innerText =
-        globalData.length;
-
-    document.getElementById(
-        "attacks"
-    ).innerText =
-        attack;
+    let attack = globalData.filter(x => x.status === "ATTACK").length;
+    document.getElementById("attacks").innerText = attack;
 }
+
     
 // ALERTS
 async function loadAlerts() {
@@ -3693,53 +3425,27 @@ function startMainLoop() {
     
     mainLoop = setInterval(async () => {
 
-        // system stopped
         if (!systemActive) {
             return;
         }
 
-        // =========================
-        // CURRENT ACTIVE PAGE
-        // =========================
-        let activePage =
-            document.querySelector(
-                ".page:not(.hidden)"
-            );
+        let activePage = document.querySelector(".page:not(.hidden)");
 
-        // =========================
-        // ALERTS refresh every 2s
-        // =========================
+        // Alerts every 2s
         await loadAlerts();
 
-        // =========================
-        // refresh every 2s (Incident page)
-        // =========================
-        if (
-            activePage &&
-            activePage.id === "incidents"
-        ) {
+        // Incident page
+        if (activePage && activePage.id === "incidents") {
             await loadIncidentsPage();
         }
 
-        // =========================
-        // TRAFFIC GRAPH ONLY
-        // refresh when visible
-        // =========================
-        if (
-            activePage &&
-            activePage.id === "traffic"
-        ) {
+        // Traffic graph only when visible
+        if (activePage && activePage.id === "traffic") {
             loadTrafficGraph();
         }
 
-        // =========================
-        // DASHBOARD GRAPH ONLY
-        // refresh when visible
-        // =========================
-        if (
-            activePage &&
-            activePage.id === "dashboard"
-        ) {
+        // Dashboard graph only when visible
+        if (activePage && activePage.id === "dashboard") {
             loadGraph();
         }
 
@@ -3747,19 +3453,12 @@ function startMainLoop() {
 }
     
 window.onload = async () => {
-
     await autoLogin();
-
     startUptimeLoop();
-
-    await loadData();
-
+    await loadData();           // Calls renderTable() internally
     loadAlerts();
-
     connectWebSocket();
-
-    applyRolePermissions()
-
+    applyRolePermissions();
     loadMetrics();
 };
     
