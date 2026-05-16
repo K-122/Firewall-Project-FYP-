@@ -277,36 +277,69 @@ def block_ip(ip):
 
     try:
 
-        ipaddress.ip_address(ip)
+        addr = ipaddress.ip_address(ip)
 
-    except:
+        # Ignore private network IP
+        if addr.is_private:
+
+            logger.warning(
+                f"⚠ Cannot block private IP: {ip}"
+            )
+
+            return False
+
+        # Ignore multicast IP
+        if addr.is_multicast:
+
+            logger.warning(
+                f"⚠ Cannot block multicast IP: {ip}"
+            )
+
+            return False
+
+        # Ignore localhost
+        if addr.is_loopback:
+
+            logger.warning(
+                f"⚠ Cannot block loopback IP: {ip}"
+            )
+
+            return False
+
+    except Exception:
 
         logger.error(
-            f"Invalid IP: {ip}"
+            f"❌ Invalid IP: {ip}"
         )
 
-        return
+        return False
 
     with data_lock:
 
+        # already blocked
         if ip in blocked_ips:
-            return
+
+            logger.info(
+                f"ℹ IP already blocked: {ip}"
+            )
+
+            return True
 
         blocked_ips.add(ip)
 
+        # update records
         for r in data_store:
 
             if r["ip"] == ip:
 
                 r["blocked"] = True
-
                 r["status"] = "BLOCKED"
 
     logger.warning(
         f"🚨 Blocking IP: {ip}"
     )
 
-    # Railway-safe
+    # Real firewall rules (local machine only)
     if os.getenv("ENVIRONMENT") != "railway":
 
         threading.Thread(
@@ -328,6 +361,8 @@ def block_ip(ip):
             daemon=True
 
         ).start()
+
+    return True
 
 # =========================
 # FAST MODEL FUNCTIONS
@@ -852,8 +887,7 @@ async def get_metrics(
 @app.post("/block/{ip}")
 def api_block(
     ip: str,
-    user: dict =
-    Depends(verify_token)
+    user: dict = Depends(verify_token)
 ):
 
     if user["role"] != "superadmin":
@@ -863,17 +897,22 @@ def api_block(
             detail="Forbidden"
         )
 
-    block_ip(ip)
+    success = block_ip(ip)
+
+    if not success:
+
+        return {
+            "status": "failed",
+            "message": "Cannot block local/private IP",
+            "ip": ip
+        }
 
     logger.warning(
-        f"🚨 {user['username']} "
-        f"blocked IP: {ip}"
+        f"🚨 {user['username']} blocked IP: {ip}"
     )
 
     return {
-
         "status": "blocked",
-
         "ip": ip
     }
 
