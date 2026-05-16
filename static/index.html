@@ -1255,7 +1255,11 @@ function showPage(p){
     loadTrafficGraph();
 }
     if (p === "incidents") {
-    loadIncidentsPage();
+
+    if(!window.incidentLoaded){
+        loadIncidentsPage();
+        window.incidentLoaded=true;
+    }
 }
 }
 
@@ -2494,17 +2498,14 @@ async function handleBlockClick() {
     
 async function blockIP(ip){
 
+    if(!ip)return;
+
+    let oldState = systemActive;
+
+    // pause updates
+    systemActive = false;
+
     try{
-
-        let token =
-            localStorage.getItem(
-                "token"
-            );
-
-        console.log(
-            "Token:",
-            token
-        );
 
         let res = await fetch(
             `/block/${encodeURIComponent(ip)}`,
@@ -2512,49 +2513,35 @@ async function blockIP(ip){
                 method:"POST",
                 headers:{
                     "Authorization":
-                    `Bearer ${token}`
+                    `Bearer ${localStorage.getItem("token")}`
                 }
             }
         );
 
-        console.log(
-            "Status:",
-            res.status
-        );
-
-        let text =
-            await res.text();
-
-        console.log(
-            "Response:",
-            text
-        );
-
         if(!res.ok){
-
             throw new Error(
-                text
+                `HTTP ${res.status}`
             );
         }
 
         alert(
-            "🚫 Blocked: "+ip
+            "🚫 Blocked: " + ip
         );
 
         await loadBlocked();
         await loadData();
 
-    }
-    catch(e){
+    } catch(e){
 
-        console.error(
-            e
-        );
+        console.error(e);
 
         alert(
-            "❌ "+e.message
+            "❌ Failed: "
+            + e.message
         );
     }
+    // resume updates
+    systemActive = oldState;
 }
 
 
@@ -2621,6 +2608,7 @@ async function allowIP(ip){
             "❌ "+e.message
         );
     }
+    systemActive = oldState;
 }
 
     
@@ -3537,38 +3525,58 @@ async function retrainModel() {
 }
     
 // LOOP
-function startMainLoop() {
-    if (mainLoop) {
-        return;
-    }
-    
-    mainLoop = setInterval(async () => {
+function startMainLoop(){
 
-        if (!systemActive) {
+    // prevent duplicate loops
+    if(mainLoop){
+
+        clearInterval(mainLoop);
+    }
+
+    mainLoop = setInterval(async ()=>{
+
+        if(!systemActive){
+
+            clearInterval(mainLoop);
+
+            mainLoop = null;
+
             return;
         }
 
-        let activePage = document.querySelector(".page:not(.hidden)");
+        try{
 
-        // Alerts every 2s
-        await loadAlerts();
+            // refresh dashboard data only
+            await loadData();
 
-        // Incident page
-        if (activePage && activePage.id === "incidents") {
-            await loadIncidentsPage();
+            // only load incidents when page visible
+            let incidentPage =
+                document.getElementById(
+                    "incidents"
+                );
+
+            if(
+                incidentPage &&
+                !incidentPage.classList.contains(
+                    "hidden"
+                )
+            ){
+
+                await loadIncidentsPage();
+            }
+
+        }
+        catch(e){
+
+            console.error(
+                "Loop error:",
+                e
+            );
+
         }
 
-        // Traffic graph only when visible
-        if (activePage && activePage.id === "traffic") {
-            loadTrafficGraph();
-        }
+    },5000);
 
-        // Dashboard graph only when visible
-        if (activePage && activePage.id === "dashboard") {
-            loadGraph();
-        }
-
-    }, 2000);
 }
     
 window.onload = async () => {
