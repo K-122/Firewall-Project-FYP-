@@ -2492,17 +2492,19 @@ async function handleBlockClick() {
     await loadBlocked();
 }
     
-// =========================
-// BLOCK IP
-// =========================
 async function blockIP(ip){
 
-    if(!ip){
-        alert("⚠ No IP provided");
-        return;
-    }
-
     try{
+
+        let token =
+            localStorage.getItem(
+                "token"
+            );
+
+        console.log(
+            "Token:",
+            token
+        );
 
         let res = await fetch(
             `/block/${encodeURIComponent(ip)}`,
@@ -2510,21 +2512,33 @@ async function blockIP(ip){
                 method:"POST",
                 headers:{
                     "Authorization":
-                    `Bearer ${localStorage.getItem("token")}`
+                    `Bearer ${token}`
                 }
             }
         );
 
-        // don't force json parsing
+        console.log(
+            "Status:",
+            res.status
+        );
+
+        let text =
+            await res.text();
+
+        console.log(
+            "Response:",
+            text
+        );
+
         if(!res.ok){
 
             throw new Error(
-                `HTTP ${res.status}`
+                text
             );
         }
 
         alert(
-            "🚫 Blocked: " + ip
+            "🚫 Blocked: "+ip
         );
 
         await loadBlocked();
@@ -2533,32 +2547,30 @@ async function blockIP(ip){
     }
     catch(e){
 
-    console.error(
-        "Block error:",
-        e
-    );
+        console.error(
+            e
+        );
 
-    alert(
-        `❌ Failed to block:
-IP: ${ip}
-
-Reason:
-${e.message}`
-    );
+        alert(
+            "❌ "+e.message
+        );
+    }
 }
 
 
-// =========================
-// ALLOW IP
-// =========================
 async function allowIP(ip){
 
-    if(!ip){
-        alert("⚠ No IP provided");
-        return;
-    }
-
     try{
+
+        let token =
+            localStorage.getItem(
+                "token"
+            );
+
+        console.log(
+            "Token:",
+            token
+        );
 
         let res = await fetch(
             `/allow/${encodeURIComponent(ip)}`,
@@ -2566,40 +2578,47 @@ async function allowIP(ip){
                 method:"POST",
                 headers:{
                     "Authorization":
-                    `Bearer ${localStorage.getItem("token")}`
+                    `Bearer ${token}`
                 }
             }
+        );
+
+        console.log(
+            "Status:",
+            res.status
+        );
+
+        let text =
+            await res.text();
+
+        console.log(
+            "Response:",
+            text
         );
 
         if(!res.ok){
 
             throw new Error(
-                `HTTP ${res.status}`
+                text
             );
         }
 
         alert(
-            "✅ Allowed: " + ip
+            "✅ Allowed: "+ip
         );
 
         await loadBlocked();
         await loadData();
 
     }
-     catch(e){
+    catch(e){
 
         console.error(
-            "Allow error:",
             e
         );
 
         alert(
-            `❌ Failed to allow:
-
-            IP: ${ip}
-            
-            Reason:
-            ${e.message}`
+            "❌ "+e.message
         );
     }
 }
