@@ -2527,41 +2527,75 @@ async function blockIP(ip) {
     }
 
     try {
-        let res = await fetch(`/block/${encodeURIComponent(ip)}`, {
-    method: "POST",
-    headers: {
-        "Authorization":
-            `Bearer ${localStorage.getItem("token")}`
-    }
-});
+
+        let res = await fetch(
+            `/block/${encodeURIComponent(ip)}`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization":
+                    `Bearer ${localStorage.getItem("token")}`
+                }
+            }
+        );
+
+        // 🔥 Read backend response
+        let data = await res.json();
 
         if (!res.ok) {
-            throw new Error("Failed");
+            throw new Error(
+                data.detail || "Failed"
+            );
         }
-        
+
+        // 🔥 Update local blocked array
         if (!blockedIPs.includes(ip)) {
             blockedIPs.push(ip);
         }
-        
+
         alert("🚫 Blocked: " + ip);
 
-        // ✅ OPEN MODAL (Traffic page)
-        let modal = document.getElementById("blockedModal");
+        // 🔥 Open popup
+        let modal =
+            document.getElementById(
+                "blockedModal"
+            );
 
-        if (modal.classList.contains("hidden")) {
-            modal.classList.remove("hidden");
+        if (
+            modal &&
+            modal.classList.contains(
+                "hidden"
+            )
+        ) {
+
+            modal.classList.remove(
+                "hidden"
+            );
         }
 
-        // ✅ LOAD BLOCKED LIST
-        loadBlocked();
+        // 🔥 Refresh blocked list
+        await loadBlocked();
 
-        // ✅ ALSO UPDATE INLINE PANEL (incident page)
-        if (document.getElementById("blockedPanel")) {
-            loadBlockedInline();
+        // 🔥 Refresh incident panel
+        if (
+            document.getElementById(
+                "blockedPanel"
+            )
+        ) {
+
+            await loadBlockedInline();
         }
+
+        // 🔥 Refresh table
+        renderTable();
 
     } catch (e) {
-        alert("❌ Failed to block IP");
+
+        console.error(e);
+
+        alert(
+            "❌ Failed: " + e.message
+        );
     }
 }
 
