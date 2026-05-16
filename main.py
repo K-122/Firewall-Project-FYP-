@@ -858,13 +858,11 @@ def api_block(
 
 @app.post("/allow/{ip}")
 def api_allow(
-    ip: str,
-    user: dict =
-    Depends(verify_token)
+    ip:str,
+    user:dict=Depends(verify_token)
 ):
 
     if user["role"] != "superadmin":
-
         raise HTTPException(
             status_code=403,
             detail="Forbidden"
@@ -872,26 +870,31 @@ def api_allow(
 
     with data_lock:
 
-        if ip in blocked_ips:
+        # remove object
+        blocked_ips[:] = [
 
-            blocked_ips.remove(ip)
+            x for x in blocked_ips
+            if x["ip"] != ip
+        ]
 
-            for r in data_store:
+        # restore status
+        for r in data_store:
 
-                if r["ip"] == ip:
+            if r["ip"] == ip:
 
-                    r["blocked"] = False
+                r["blocked"] = False
 
-    logger.info(
-        f"✅ {user['username']} "
-        f"allowed IP: {ip}"
-    )
+                if r["score"] > 0.7:
+                    r["status"] = "ATTACK"
+
+                elif r["score"] > 0.4:
+                    r["status"] = "SUSPICIOUS"
+                else:
+                    r["status"] = "NORMAL"
 
     return {
-
-        "status": "allowed",
-
-        "ip": ip
+        "status":"allowed",
+        "ip":ip
     }
 
 @app.post("/quarantine/{ip}")
