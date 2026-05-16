@@ -1040,7 +1040,7 @@ td button:last-child {
                         <th>Location</th>
                         <th>Status</th>
                         <th>Score</th>
-                        <th>Action</th>
+                        <th id="actionHeader">Action</th>
                     </tr>
                 </thead>
                 <tbody id="table"></tbody>
@@ -1295,6 +1295,7 @@ function startScan(){
     document.getElementById("status").innerText = "Running";
 
     // 🔥 run immediately
+    connectWebSocket();
     loadData();
     loadAlerts();
    requestAnimationFrame(() => {
@@ -2584,7 +2585,7 @@ async function blockIP(ip){
     }
 }
 
-aasync function allowIP(ip){
+async function allowIP(ip){
 
     try{
 
@@ -3709,6 +3710,8 @@ window.onload = async () => {
     loadAlerts();
 
     connectWebSocket();
+
+    applyRolePermissions()
 
     loadMetrics();
 };
