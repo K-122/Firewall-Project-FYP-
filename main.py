@@ -531,7 +531,10 @@ def process_line(line):
             "Loading",
 
         "blocked":
-            ip in blocked_ips
+        any(
+            x["ip"] == ip
+            for x in blocked_ips
+        )
     }
 
     with data_lock:
@@ -728,10 +731,13 @@ def get_incidents(
 
         temp = item.copy()
 
-        if temp["ip"] in blocked_ips:
-
+        if any(
+            x["ip"] == temp["ip"]
+            for x in blocked_ips
+        ):
             temp["status"] = "BLOCKED"
 
+            
         if temp["status"] in [
 
             "ATTACK",
