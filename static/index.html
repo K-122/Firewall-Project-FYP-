@@ -2492,7 +2492,15 @@ async function handleBlockClick() {
     await loadBlocked();
 }
     
+// =========================
+// BLOCK IP
+// =========================
 async function blockIP(ip){
+
+    if(!ip){
+        alert("⚠ No IP provided");
+        return;
+    }
 
     try{
 
@@ -2507,78 +2515,91 @@ async function blockIP(ip){
             }
         );
 
-        let data = await res.json();
-
+        // don't force json parsing
         if(!res.ok){
 
             throw new Error(
-                data.detail ||
-                "Block failed"
+                `HTTP ${res.status}`
             );
         }
 
-        alert("🚫 Blocked: " + ip);
+        alert(
+            "🚫 Blocked: " + ip
+        );
 
         await loadBlocked();
+        await loadData();
 
-        renderTable();
-
-    }catch(e){
-
-        console.error(e);
-
-        alert(
-            "❌ " + e.message
-        );
     }
+    catch(e){
+
+    console.error(
+        "Block error:",
+        e
+    );
+
+    alert(
+        `❌ Failed to block:
+IP: ${ip}
+
+Reason:
+${e.message}`
+    );
 }
 
-// =============
-// ALLOW IP 
-// =============
-async function allowIP(ip) {
 
-    if (!ip) {
+// =========================
+// ALLOW IP
+// =========================
+async function allowIP(ip){
+
+    if(!ip){
         alert("⚠ No IP provided");
         return;
     }
 
-    try {
+    try{
 
         let res = await fetch(
             `/allow/${encodeURIComponent(ip)}`,
             {
-                method: "POST",
-                headers: {
+                method:"POST",
+                headers:{
                     "Authorization":
-                        `Bearer ${localStorage.getItem("token")}`
+                    `Bearer ${localStorage.getItem("token")}`
                 }
             }
         );
 
-        let data = await res.json();
-
-        if (!res.ok) {
+        if(!res.ok){
 
             throw new Error(
-                data.detail ||
-                "Allow failed"
+                `HTTP ${res.status}`
             );
         }
 
-        alert("✅ Allowed: " + ip);
+        alert(
+            "✅ Allowed: " + ip
+        );
 
         await loadBlocked();
-
-        renderTable();
+        await loadData();
 
     }
-    catch(e) {
+     catch(e){
 
-        console.error(e);
+        console.error(
+            "Allow error:",
+            e
+        );
 
         alert(
-            "❌ " + e.message
+            `❌ Failed to allow:
+
+            IP: ${ip}
+            
+            Reason:
+            ${e.message}`
         );
     }
 }
