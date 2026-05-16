@@ -3277,14 +3277,14 @@ function renderTable() {
             <button
             type="button"
             class="btn stop"
-            onclick="blockIP(${JSON.stringify(x.ip)})">
+            onclick="blockIP(event, ${JSON.stringify(x.ip)})">
             Deny
             </button>
-        
+            
             <button
             type="button"
             class="btn start"
-            onclick="allowIP(${JSON.stringify(x.ip)})">
+            onclick="allowIP(event, ${JSON.stringify(x.ip)})">
             Allow
             </button>
         
