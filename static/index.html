@@ -2544,15 +2544,31 @@ async function handleBlockClick() {
     await loadBlocked();
 }
     
-async function blockIP(event, ip){
+async function blockIP(eventOrIP, ip=null){
 
-    let button = event.target;
+    let button = null;
 
-    button.disabled = true;
+    // called from button click:
+    // blockIP(event, ip)
+    if (eventOrIP && eventOrIP.target){
+
+        button = eventOrIP.target;
+
+    } 
+    // called from handleBlockClick():
+    // blockIP(ip)
+    else{
+
+        ip = eventOrIP;
+    }
+
+    if(button){
+        button.disabled=true;
+    }
 
     try{
 
-        let res = await fetch(
+        let res=await fetch(
             `/block/${encodeURIComponent(ip)}`,
             {
                 method:"POST",
@@ -2564,38 +2580,59 @@ async function blockIP(event, ip){
         );
 
         if(!res.ok){
-            throw new Error();
+
+            throw new Error(
+                "Block failed"
+            );
         }
 
         await loadBlocked();
 
         document
-            .getElementById(
-                "blockedModal"
-            )
-            .classList.remove(
-                "hidden"
-            );
+        .getElementById("blockedModal")
+        .classList.remove("hidden");
+
+        alert("🚫 IP blocked: " + ip);
 
     }catch(e){
 
         console.error(e);
 
+        alert("❌ Failed to block IP");
+
     }finally{
 
-        button.disabled = false;
+        if(button){
+            button.disabled=false;
+        }
     }
 }
 
-async function allowIP(event, ip){
+async function allowIP(eventOrIP, ip=null){
 
-    let button = event.target;
+    let button = null;
 
-    button.disabled = true;
+    // called from button:
+    // allowIP(event, ip)
+    if(eventOrIP && eventOrIP.target){
+
+        button = eventOrIP.target;
+
+    }
+    // called directly:
+    // allowIP(ip)
+    else{
+
+        ip = eventOrIP;
+    }
+
+    if(button){
+        button.disabled = true;
+    }
 
     try{
 
-        await fetch(
+        let res = await fetch(
             `/allow/${encodeURIComponent(ip)}`,
             {
                 method:"POST",
@@ -2606,9 +2643,32 @@ async function allowIP(event, ip){
             }
         );
 
+        if(!res.ok){
+
+            throw new Error(
+                "Allow failed"
+            );
+        }
+
+        await loadBlocked();
+
+        alert(
+            "✅ IP allowed: " + ip
+        );
+
+    }catch(e){
+
+        console.error(e);
+
+        alert(
+            "❌ Failed to allow IP"
+        );
+
     }finally{
 
-        button.disabled = false;
+        if(button){
+            button.disabled = false;
+        }
     }
 }
     
