@@ -831,35 +831,10 @@ async def get_metrics(
 # SUPERADMIN ROUTES
 # =========================
 @app.post("/block/{ip}")
-def api_block(
-    ip: str,
-    user: dict = Depends(verify_token)
-):
-
-    if user["role"] != "superadmin":
-
-        raise HTTPException(
-            status_code=403,
-            detail="Forbidden"
-        )
-
-    success = block_ip(ip)
-
-    if not success:
-
-        return {
-            "status": "failed",
-            "message": "Cannot block local/private IP",
-            "ip": ip
-        }
-
-    logger.warning(
-        f"🚨 {user['username']} blocked IP: {ip}"
-    )
+async def block_ip(ip: str):
 
     return {
-        "status": "blocked",
-        "ip": ip
+        "message": f"{ip} blocked"
     }
 
 @app.post("/allow/{ip}")
