@@ -2547,17 +2547,15 @@ async function blockIP(ip){
 
 async function allowIP(ip){
 
+    if(!ip) return;
+
+    let oldState = systemActive;
+
     try{
 
-        let token =
-            localStorage.getItem(
-                "token"
-            );
+        systemActive = false;
 
-        console.log(
-            "Token:",
-            token
-        );
+        let token = localStorage.getItem("token");
 
         let res = await fetch(
             `/allow/${encodeURIComponent(ip)}`,
@@ -2570,29 +2568,11 @@ async function allowIP(ip){
             }
         );
 
-        console.log(
-            "Status:",
-            res.status
-        );
-
-        let text =
-            await res.text();
-
-        console.log(
-            "Response:",
-            text
-        );
-
         if(!res.ok){
-
-            throw new Error(
-                text
-            );
+            throw new Error(await res.text());
         }
 
-        alert(
-            "✅ Allowed: "+ip
-        );
+        alert("✅ Allowed: " + ip);
 
         await loadBlocked();
         await loadData();
@@ -2600,14 +2580,11 @@ async function allowIP(ip){
     }
     catch(e){
 
-        console.error(
-            e
-        );
+        console.error(e);
 
-        alert(
-            "❌ "+e.message
-        );
+        alert("❌ " + e.message);
     }
+
     systemActive = oldState;
 }
 
@@ -3161,14 +3138,14 @@ function renderTable() {
                     <button
                         type="button"
                         class="btn stop"
-                        onclick="blockIP('${x.ip}')">
+                        onclick='blockIP(${JSON.stringify(x.ip)})'
                         Deny
                     </button>
 
                     <button
                         type="button"
                         class="btn start"
-                        onclick="allowIP('${x.ip}')">
+                        onclick='allowIP(${JSON.stringify(x.ip)})'
                         Allow
                     </button>
 
