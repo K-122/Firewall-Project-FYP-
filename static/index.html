@@ -3071,7 +3071,7 @@ async function loadData(){
 function renderTable() {
 
     let html = "";
-    
+
     // =========================
     // 🔐 ROLE CHECK
     // =========================
@@ -3081,10 +3081,16 @@ function renderTable() {
     // =========================
     // 📋 BUILD TABLE ROWS
     // =========================
-    globalData.slice(0, 100).forEach(x => {
+    globalData.slice(0,100).forEach(x => {
 
         let score = Number(x.score || 0);
-        if (isNaN(score)) score = 0;
+
+        if(isNaN(score)){
+            score = 0;
+        }
+
+        // FIX
+        let safeIP = JSON.stringify(x.ip);
 
         html += `
         <tr style="cursor:pointer"
@@ -3093,49 +3099,62 @@ function renderTable() {
             <td>${escapeHTML(x.time)}</td>
             <td>${escapeHTML(x.ip)}</td>
             <td>${escapeHTML(x.location || "Loading...")}</td>
-            <td class="${escapeHTML(x.status)}">${escapeHTML(x.status)}</td>
+            <td class="${escapeHTML(x.status)}">
+                ${escapeHTML(x.status)}
+            </td>
             <td>${score.toFixed(3)}</td>
 
-            <!-- ✅ ALWAYS RENDER ACTION COLUMN -->
             <td onclick="event.stopPropagation()">
+
                 ${showActions ? `
-                    <div class="action-cell">
-                        <button 
-                            type="button" 
-                            class="btn stop"
-                            onclick="blockIP('${x.ip}')">
-                            Deny
-                        </button>
-                        <button 
-                            type="button" 
-                            class="btn start"
-                            onclick="allowIP(${x.ip})">
-                            Allow
-                        </button>
-                    </div>
-                ` : ''}
+
+                <div class="action-cell">
+
+                    <button
+                        type="button"
+                        class="btn stop"
+                        onclick="blockIP('${x.ip}')">
+                        Deny
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn start"
+                        onclick="allowIP('${x.ip}')">
+                        Allow
+                    </button>
+
+                </div>
+
+                ` : ""}
+
             </td>
 
         </tr>`;
     });
 
     // =========================
-    // ✅ UPDATE TABLE
+    // UPDATE TABLE
     // =========================
-    document.getElementById("table").innerHTML = html;
-
-    let wrapper = document.querySelector(".table-wrapper");
-    if (wrapper) {
-        wrapper.scrollTop = 0;
-    }
+    document.getElementById(
+        "table"
+    ).innerHTML = html;
 
     // =========================
-    // 📊 UPDATE STATS
+    // UPDATE STATS
     // =========================
-    document.getElementById("total").innerText = globalData.length;
-    
-    let attack = globalData.filter(x => x.status === "ATTACK").length;
-    document.getElementById("attacks").innerText = attack;
+    document.getElementById(
+        "total"
+    ).innerText = globalData.length;
+
+    let attack =
+        globalData.filter(
+            x => x.status==="ATTACK"
+        ).length;
+
+    document.getElementById(
+        "attacks"
+    ).innerText = attack;
 }
 
     
