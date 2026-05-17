@@ -1904,7 +1904,9 @@ function updateStats(data) {
         ).length;
 
     let mitigated =
-        blockedIPs.length;
+    data.filter(
+        x => x.blocked === true
+    ).length;
 
     // =========================
     // MITIGATED %
