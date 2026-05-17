@@ -539,18 +539,25 @@ def process_line(line):
 
     with data_lock:
 
+    should_add = True
+
+    if data_store:
+
+        last = data_store[-1]
+
         if (
-            not data_store
-            or data_store[-1] != record
+            last["ip"] == record["ip"]
+            and last["score"] == record["score"]
+            and last["status"] == record["status"]
         ):
 
-            data_store.append(
-                record
-            )
+            should_add = False
 
-        data_store[:] = (
-            data_store[-300:]
-        )
+    if should_add:
+
+        data_store.append(record)
+
+    data_store[:] = data_store[-300:]
 
     if status == "ATTACK":
 
