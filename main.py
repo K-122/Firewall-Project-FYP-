@@ -353,15 +353,12 @@ def process_line(line):
     global sequence_buffer
 
     try:
-
         log = json.loads(line)
 
     except Exception as e:
-
         logger.error(
             f"JSON error: {e}"
         )
-
         return
 
     if "flow" not in log:
@@ -399,32 +396,32 @@ def process_line(line):
 
     data = {
 
-        "duration": [
-            flow.get("age", 0)
+        "duration":[
+            flow.get("age",0)
         ],
 
-        "orig_bytes": [
+        "orig_bytes":[
             flow.get(
                 "bytes_toserver",
                 0
             )
         ],
 
-        "resp_bytes": [
+        "resp_bytes":[
             flow.get(
                 "bytes_toclient",
                 0
             )
         ],
 
-        "orig_pkts": [
+        "orig_pkts":[
             flow.get(
                 "pkts_toserver",
                 0
             )
         ],
 
-        "resp_pkts": [
+        "resp_pkts":[
             flow.get(
                 "pkts_toclient",
                 0
@@ -493,15 +490,12 @@ def process_line(line):
     )
 
     if final_score > 0.7:
-
         status = "ATTACK"
 
     elif final_score > 0.4:
-
         status = "SUSPICIOUS"
 
     else:
-
         status = "NORMAL"
 
     record = {
@@ -525,39 +519,45 @@ def process_line(line):
             severity_map[status],
 
         "time":
-            time.strftime("%H:%M:%S"),
+            time.strftime(
+                "%H:%M:%S"
+            ),
 
         "location":
             "Loading",
 
         "blocked":
-        any(
-            x["ip"] == ip
-            for x in blocked_ips
-        )
+            any(
+                x["ip"] == ip
+                for x in blocked_ips
+            )
     }
 
     with data_lock:
 
-    should_add = True
+        should_add = True
 
-    if data_store:
+        if data_store:
 
-        last = data_store[-1]
+            last = data_store[-1]
 
-        if (
-            last["ip"] == record["ip"]
-            and last["score"] == record["score"]
-            and last["status"] == record["status"]
-        ):
+            if (
+                last["ip"] == record["ip"]
+                and last["score"] == record["score"]
+                and last["status"] == record["status"]
+            ):
 
-            should_add = False
+                should_add = False
 
-    if should_add:
+        if should_add:
 
-        data_store.append(record)
+            data_store.append(
+                record
+            )
 
-    data_store[:] = data_store[-300:]
+        data_store[:] = (
+            data_store[-300:]
+        )
 
     if status == "ATTACK":
 
