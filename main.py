@@ -356,29 +356,16 @@ def process_line(line):
         log = json.loads(line)
 
     except Exception as e:
-        logger.error(
-            f"JSON error: {e}"
-        )
+        logger.error(f"JSON error: {e}")
         return
 
     if "flow" not in log:
         return
 
-    src_ip = log.get(
-        "src_ip",
-        "unknown"
-    )
+    src_ip = log.get("src_ip", "unknown")
+    dest_ip = log.get("dest_ip", "unknown")
 
-    dest_ip = log.get(
-        "dest_ip",
-        "unknown"
-    )
-
-    if src_ip.startswith((
-        "192.168",
-        "10.",
-        "172."
-    )):
+    if src_ip.startswith(("192.168", "10.", "172.")):
         ip = dest_ip
     else:
         ip = src_ip
@@ -388,17 +375,12 @@ def process_line(line):
 
     flow = log.get("flow", {})
 
-    if flow.get(
-        "pkts_toserver",
-        0
-    ) < 1:
+    if flow.get("pkts_toserver", 0) < 1:
         return
 
     data = {
 
-        "duration":[
-            flow.get("age",0)
-        ],
+        "duration":[flow.get("age",0)],
 
         "orig_bytes":[
             flow.get(
@@ -434,7 +416,6 @@ def process_line(line):
     try:
 
         X_lstm = lstm_scaler.transform(df)
-
         X_mlp = mlp_scaler.transform(df)
 
     except Exception as e:
@@ -489,13 +470,16 @@ def process_line(line):
         0.4 * mlp_score
     )
 
-     if final_score > 0.7:
+    if final_score > 0.7:
+
         status = "ATTACK"
 
     elif final_score > 0.4:
+
         status = "SUSPICIOUS"
 
     else:
+
         status = "NORMAL"
 
     record = {
@@ -519,7 +503,9 @@ def process_line(line):
             severity_map[status],
 
         "time":
-            time.strftime("%H:%M:%S"),
+            time.strftime(
+                "%H:%M:%S"
+            ),
 
         "location":
             "Loading",
@@ -548,9 +534,7 @@ def process_line(line):
                 record
             )
 
-        data_store[:] = (
-            data_store[-300:]
-        )
+        data_store[:] = data_store[-300:]
 
     if status == "ATTACK":
 
