@@ -836,10 +836,15 @@ def api_block(
     user: dict = Depends(verify_token)
 ):
 
+    if user["role"] != "superadmin":
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden"
+        )
+
     success = block_ip(ip)
 
     if not success:
-
         return {
             "status":"failed",
             "message":"Cannot block IP",
@@ -855,11 +860,18 @@ def api_block(
         "ip":ip
     }
 
+
 @app.post("/allow/{ip}")
 def api_allow(
-    ip:str,
-    user:dict=Depends(verify_token)
+    ip: str,
+    user: dict = Depends(verify_token)
 ):
+
+    if user["role"] != "superadmin":
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden"
+        )
 
     with data_lock:
 
@@ -876,8 +888,10 @@ def api_allow(
 
                 if r["score"] > 0.7:
                     r["status"] = "ATTACK"
+
                 elif r["score"] > 0.4:
                     r["status"] = "SUSPICIOUS"
+
                 else:
                     r["status"] = "NORMAL"
 
