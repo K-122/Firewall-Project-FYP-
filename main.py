@@ -539,33 +539,41 @@ def process_line(line):
 
     with data_lock:
 
-    if not data_store or data_store[-1] != record:
+        if (
+            not data_store
+            or data_store[-1] != record
+        ):
 
-        data_store.append(record)
+            data_store.append(
+                record
+            )
 
-    data_store[:] = data_store[-300:]
-
-
-if status == "ATTACK":
-
-    should_block = False
-
-    with data_lock:
-
-        attack_counter[ip] = (
-            attack_counter.get(ip, 0) + 1
+        data_store[:] = (
+            data_store[-300:]
         )
 
-        if attack_counter[ip] >= 3:
+    if status == "ATTACK":
 
-            should_block = True
+        should_block = False
 
-    if should_block:
+        with data_lock:
 
-        block_ip(ip)
+            attack_counter[ip] = (
+                attack_counter.get(
+                    ip,
+                    0
+                ) + 1
+            )
 
+            if attack_counter[ip] >= 3:
 
-return record
+                should_block = True
+
+        if should_block:
+
+            block_ip(ip)
+
+    return record
 
 # =========================
 # LOG MONITOR
