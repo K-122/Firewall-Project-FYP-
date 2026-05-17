@@ -489,7 +489,7 @@ def process_line(line):
         0.4 * mlp_score
     )
 
-    if final_score > 0.7:
+     if final_score > 0.7:
         status = "ATTACK"
 
     elif final_score > 0.4:
@@ -519,9 +519,7 @@ def process_line(line):
             severity_map[status],
 
         "time":
-            time.strftime(
-                "%H:%M:%S"
-            ),
+            time.strftime("%H:%M:%S"),
 
         "location":
             "Loading",
@@ -533,22 +531,25 @@ def process_line(line):
             )
     }
 
-   with data_lock:
+    with data_lock:
 
-    should_add = not any(
+        should_add = not any(
 
-        x["ip"] == record["ip"]
-        and x["score"] == record["score"]
-        and x["status"] == record["status"]
+            x["ip"] == record["ip"]
+            and x["score"] == record["score"]
+            and x["status"] == record["status"]
 
-        for x in data_store
-    )
+            for x in data_store
+        )
 
-    if should_add:
+        if should_add:
 
-        data_store.append(record)
+            data_store.append(
+                record
+            )
 
-    data_store[:] = data_store[-300:]
+        data_store[:] = (
+            data_store[-300:]
         )
 
     if status == "ATTACK":
@@ -573,7 +574,6 @@ def process_line(line):
             block_ip(ip)
 
     return record
-
 # =========================
 # LOG MONITOR
 # =========================
@@ -978,9 +978,7 @@ async def retrain_model(
 # =========================
 @app.post("/push")
 async def push_log(
-    request: Request,
-    user: dict =
-    Depends(verify_token)
+    request: Request
 ):
 
     data = await request.json()
